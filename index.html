@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>阅读记录</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Reading Records</p>
+          <h1>我的阅读记录</h1>
+          <p class="hero-text">添加书籍、维护封面，并把每本书的读书笔记留在这里。</p>
+        </div>
+        <button class="primary-button" id="newBookButton" type="button">添加书籍</button>
+      </section>
+
+      <section class="layout">
+        <aside class="panel form-panel" aria-labelledby="formTitle">
+          <h2 id="formTitle">添加书籍</h2>
+          <form id="bookForm">
+            <input type="hidden" id="bookId" />
+
+            <label>
+              书名
+              <input id="title" name="title" type="text" placeholder="例如：活着" required />
+            </label>
+
+            <label>
+              作者
+              <input id="author" name="author" type="text" placeholder="例如：余华" />
+            </label>
+
+            <label>
+              阅读状态
+              <select id="status" name="status">
+                <option value="想读">想读</option>
+                <option value="在读">在读</option>
+                <option value="读完">读完</option>
+              </select>
+            </label>
+
+            <label>
+              封面
+              <input id="cover" name="cover" type="file" accept="image/*" />
+            </label>
+
+            <div class="cover-preview" id="coverPreview" aria-live="polite">
+              <span>暂无封面</span>
+            </div>
+
+            <label>
+              读书笔记
+              <textarea id="note" name="note" rows="8" placeholder="写下摘录、想法或读后感"></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">保存</button>
+              <button class="secondary-button" id="resetButton" type="button">清空</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="panel book-section" aria-labelledby="bookListTitle">
+          <div class="section-heading">
+            <div>
+              <h2 id="bookListTitle">书籍列表</h2>
+              <p id="bookCount">共 0 本书</p>
+            </div>
+            <input id="searchInput" type="search" placeholder="搜索书名、作者或笔记" />
+          </div>
+
+          <div class="empty-state" id="emptyState">
+            <h3>还没有阅读记录</h3>
+            <p>从左侧添加第一本书开始。</p>
+          </div>
+
+          <div class="book-grid" id="bookGrid"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
