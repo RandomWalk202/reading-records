@@ -1,14 +1,6 @@
 # 阅读记录
 
-一个多人共享的阅读记录网站，支持：
-
-- 添加书籍
-- 修改书籍
-- 删除书籍
-- 写读书笔记
-- 上传封面
-
-数据保存在 Supabase 数据库中，封面保存在 Supabase Storage 中。
+一个展示微信读书书架与划线的阅读记录网站。数据通过本地同步脚本写入 Supabase，网页只读取数据库（不会把 API Key 暴露在浏览器里）。
 
 ## 使用
 
@@ -22,8 +14,30 @@ python3 -m http.server 4173
 
 然后打开 `http://localhost:4173`。
 
+## 同步微信读书
+
+1. 准备微信读书 Agent API Key，并设置环境变量：
+
+```bash
+export WEREAD_API_KEY=wrk-xxxxxxxx
+```
+
+2. 在项目根目录运行：
+
+```bash
+node scripts/sync-weread.mjs
+```
+
+脚本会拉取书架（`/shelf/sync`）、阅读进度（`/book/getprogress`）和最近若干条划线（`/book/bookmarklist`，默认每本 3 条）。网页按「在读 / 读完 / 待读」分组：在读显示进度，暂无划线的书归入待读。
+
+可调整每本书划线条数：
+
+```bash
+export WEREAD_HIGHLIGHTS_PER_BOOK=8
+node scripts/sync-weread.mjs
+```
+
 ## 后端
 
-- Supabase table：`books`
-- Supabase Storage bucket：`book-covers`
-- 当前版本为了方便共享，允许公开读取、添加、修改和删除记录。
+- Supabase table：`weread_books`、`weread_highlights`
+- 当前版本为了方便共享，允许公开读取、写入（同步脚本使用）
