@@ -177,6 +177,32 @@ async function main() {
   }
 
   console.log(`Done. ${books.length} books, ${totalHighlights} highlights.`);
+
+  await syncReadingStats();
+}
+
+const READING_STAT_MODES = ["weekly", "monthly", "annually"];
+
+async function syncReadingStats() {
+  console.log("Fetching reading stats...");
+  for (const mode of READING_STAT_MODES) {
+    const payload = await weread("/readdata/detail", { mode });
+    await supabaseRequest("weread_reading_stats", {
+      method: "POST",
+      query: { on_conflict: "mode" },
+      body: [
+        {
+          mode,
+          payload,
+          synced_at: new Date().toISOString(),
+        },
+      ],
+    });
+    const hours = Math.floor(Number(payload.totalReadTime || 0) / 3600);
+    const minutes = Math.floor((Number(payload.totalReadTime || 0) % 3600) / 60);
+    console.log(`  ${mode}: ${hours}h ${minutes}m, ${payload.readDays ?? 0} read days`);
+  }
+  console.log("Reading stats synced.");
 }
 
 main().catch((error) => {

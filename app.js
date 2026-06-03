@@ -10,7 +10,27 @@ const elements = {
   wereadEmptyState: document.querySelector("#wereadEmptyState"),
   wereadCount: document.querySelector("#wereadCount"),
   wereadSearchInput: document.querySelector("#wereadSearchInput"),
+  statsTabs: document.querySelectorAll(".stats-tab"),
+  statsEmptyState: document.querySelector("#statsEmptyState"),
+  statsBody: document.querySelector("#statsBody"),
+  statsSyncedAt: document.querySelector("#statsSyncedAt"),
+  statsTotalTime: document.querySelector("#statsTotalTime"),
+  statsReadDays: document.querySelector("#statsReadDays"),
+  statsDayAverage: document.querySelector("#statsDayAverage"),
+  statsCompare: document.querySelector("#statsCompare"),
+  statsRankList: document.querySelector("#statsRankList"),
 };
+
+const STATS_MODE_LABELS = {
+  weekly: "本周",
+  monthly: "本月",
+  annually: "今年",
+};
+
+const STATS_READ_LONGEST_LIMIT = 5;
+
+let readingStatsByMode = {};
+let activeStatsMode = "weekly";
 
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 3;
@@ -29,6 +49,137 @@ function escapeHtml(value) {
 
     return entities[char];
   });
+}
+
+function formatDurationSeconds(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds || 0));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours} 小时 ${minutes} 分钟`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes} 分钟`;
+  }
+
+  return "不足 1 分钟";
+}
+
+function formatCompareRatio(compare) {
+  const value = Number(compare);
+  if (!Number.isFinite(value) || value === 0) {
+    return "与上期持平";
+  }
+
+  const percent = Math.round(Math.abs(value) * 100);
+  return value > 0 ? `较上期 +${percent}%` : `较上期 -${percent}%`;
+}
+
+function readLongestTitle(entry) {
+  return entry.book?.title || entry.albumInfo?.name || "未知书名";
+}
+
+function readLongestAuthor(entry) {
+  return entry.book?.author || entry.albumInfo?.author || "";
+}
+
+function renderReadingStats() {
+  const hasAnyStats = Object.keys(readingStatsByMode).length > 0;
+  elements.statsEmptyState.hidden = hasAnyStats;
+  elements.statsBody.hidden = !hasAnyStats;
+
+  if (!hasAnyStats) {
+    return;
+  }
+
+  const payload = readingStatsByMode[activeStatsMode];
+  if (!payload) {
+    elements.statsEmptyState.hidden = false;
+    elements.statsBody.hidden = true;
+    elements.statsSyncedAt.textContent = `${STATS_MODE_LABELS[activeStatsMode]}暂无数据`;
+    return;
+  }
+
+  const syncedAt = payload.synced_at;
+  const syncedLabel = syncedAt
+    ? `更新于 ${new Date(syncedAt).toLocaleString("zh-CN", { hour12: false })}`
+    : "";
+  elements.statsSyncedAt.textContent = `${STATS_MODE_LABELS[activeStatsMode]} · ${syncedLabel}`;
+
+  elements.statsTotalTime.textContent = formatDurationSeconds(payload.totalReadTime);
+  elements.statsReadDays.textContent = `${payload.readDays ?? 0} 天`;
+  elements.statsDayAverage.textContent = formatDurationSeconds(payload.dayAverageReadTime);
+
+  if (payload.compare !== undefined && payload.compare !== null) {
+    elements.statsCompare.hidden = false;
+    elements.statsCompare.textContent = formatCompareRatio(payload.compare);
+    elements.statsCompare.classList.toggle("is-up", Number(payload.compare) > 0);
+    elements.statsCompare.classList.toggle("is-down", Number(payload.compare) < 0);
+  } else {
+    elements.statsCompare.hidden = true;
+    elements.statsCompare.textContent = "";
+    elements.statsCompare.classList.remove("is-up", "is-down");
+  }
+
+  const rankItems = (payload.readLongest || []).slice(0, STATS_READ_LONGEST_LIMIT);
+  if (!rankItems.length) {
+    elements.statsRankList.innerHTML = `<li class="stats-rank-empty">暂无排行数据</li>`;
+    return;
+  }
+
+  elements.statsRankList.innerHTML = rankItems
+    .map((entry, index) => {
+      const title = readLongestTitle(entry);
+      const author = readLongestAuthor(entry);
+      const authorLine = author ? `<span class="stats-rank-author">${escapeHtml(author)}</span>` : "";
+
+      return `
+        <li class="stats-rank-item">
+          <span class="stats-rank-index">${index + 1}</span>
+          <div class="stats-rank-meta">
+            <span class="stats-rank-title">${escapeHtml(title)}</span>
+            ${authorLine}
+          </div>
+          <span class="stats-rank-time">${escapeHtml(formatDurationSeconds(entry.readTime))}</span>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+async function loadReadingStats() {
+  const { data, error } = await supabase.from("weread_reading_stats").select("mode, payload, synced_at");
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  readingStatsByMode = {};
+  for (const row of data || []) {
+    readingStatsByMode[row.mode] = {
+      ...row.payload,
+      synced_at: row.synced_at,
+    };
+  }
+
+  renderReadingStats();
+}
+
+function setActiveStatsMode(mode) {
+  activeStatsMode = mode;
+  for (const tab of elements.statsTabs) {
+    const isActive = tab.dataset.mode === mode;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  }
+  renderReadingStats();
+}
+
+for (const tab of elements.statsTabs) {
+  tab.addEventListener("click", () => setActiveStatsMode(tab.dataset.mode));
 }
 
 function setWereadEmptyState(title, text) {
@@ -223,6 +374,6 @@ function renderWereadBooks() {
 
 elements.wereadSearchInput.addEventListener("input", renderWereadBooks);
 
-loadWereadBooks().catch((error) => {
+Promise.all([loadReadingStats(), loadWereadBooks()]).catch((error) => {
   console.error(error);
 });

@@ -16,6 +16,53 @@
         </div>
       </section>
 
+      <section class="panel stats-section" aria-labelledby="statsHeading">
+        <div class="stats-header">
+          <div>
+            <h2 id="statsHeading">阅读时长</h2>
+            <p class="stats-synced" id="statsSyncedAt">同步后显示统计</p>
+          </div>
+          <div class="stats-tabs" role="tablist" aria-label="统计周期">
+            <button type="button" class="stats-tab is-active" data-mode="weekly" role="tab" aria-selected="true">
+              本周
+            </button>
+            <button type="button" class="stats-tab" data-mode="monthly" role="tab" aria-selected="false">
+              本月
+            </button>
+            <button type="button" class="stats-tab" data-mode="annually" role="tab" aria-selected="false">
+              今年
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-empty" id="statsEmptyState">
+          <p>还没有阅读统计。运行 <code>node scripts/sync-weread.mjs</code> 同步后即可展示。</p>
+        </div>
+
+        <div class="stats-body" id="statsBody" hidden>
+          <div class="stats-cards">
+            <article class="stats-card">
+              <p class="stats-card-label">总阅读时长</p>
+              <p class="stats-card-value" id="statsTotalTime">—</p>
+            </article>
+            <article class="stats-card">
+              <p class="stats-card-label">阅读天数</p>
+              <p class="stats-card-value" id="statsReadDays">—</p>
+            </article>
+            <article class="stats-card">
+              <p class="stats-card-label">自然日均</p>
+              <p class="stats-card-value" id="statsDayAverage">—</p>
+              <p class="stats-card-note" id="statsCompare" hidden></p>
+            </article>
+          </div>
+
+          <section class="stats-rank" aria-labelledby="statsRankTitle">
+            <h3 id="statsRankTitle">读得最久</h3>
+            <ol class="stats-rank-list" id="statsRankList"></ol>
+          </section>
+        </div>
+      </section>
+
       <section class="panel book-section weread-section" aria-labelledby="wereadCount">
         <div class="section-heading">
           <div>
