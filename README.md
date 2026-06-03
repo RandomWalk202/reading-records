@@ -22,6 +22,8 @@ python3 -m http.server 4173
 export WEREAD_API_KEY=wrk-xxxxxxxx
 ```
 
+或在 `.env` 中配置（见 `.env.example`）。
+
 2. 在项目根目录运行：
 
 ```bash
@@ -36,6 +38,42 @@ node scripts/sync-weread.mjs
 export WEREAD_HIGHLIGHTS_PER_BOOK=8
 node scripts/sync-weread.mjs
 ```
+
+### 每天自动同步（macOS）
+
+1. 把密钥写到项目根目录的 `.env`（不要提交到 git）：
+
+```bash
+cp .env.example .env
+# 编辑 .env，填入 WEREAD_API_KEY=wrk-...
+```
+
+2. 安装定时任务（默认每天 **08:00** 执行一次）：
+
+```bash
+chmod +x scripts/install-daily-sync.sh scripts/sync-weread-daily.sh
+./scripts/install-daily-sync.sh install
+```
+
+3. 立即试跑一次（可选）：
+
+```bash
+./scripts/sync-weread-daily.sh
+tail -20 logs/sync-weread.log
+```
+
+卸载定时任务：`./scripts/install-daily-sync.sh uninstall`  
+查看是否已安装：`./scripts/install-daily-sync.sh status`
+
+修改执行时间：编辑 `~/Library/LaunchAgents/com.reading-records.weread-sync.plist` 里的 `Hour` / `Minute`，然后执行 `install` 重装。
+
+若安装时报 `node not found`，在终端执行 `which node`，把路径写入 `.env`：
+
+```bash
+NODE_BIN=/你电脑上/node的完整路径
+```
+
+（conda 用户可先 `conda install nodejs`，或只用 Homebrew 安装 Node。）
 
 ## 后端
 

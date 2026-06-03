@@ -31,6 +31,11 @@ let activeStatsMode = "weekly";
 
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 3;
+const LOADING_LABEL = "正在加载";
+const CACHE_KEY = "reading-records-cache-v1";
+const BOOK_COLUMNS =
+  "weread_book_id,title,author,cover_url,finish_reading,progress,read_update_time";
+const HIGHLIGHT_COLUMNS = "weread_book_id,mark_text,sort_order";
 
 let wereadBooks = [];
 
@@ -74,12 +79,88 @@ function formatCompareRatio(compare) {
   return value > 0 ? `较上期 +${percent}%` : `较上期 -${percent}%`;
 }
 
+function slimStatsRow(row) {
+  const payload = row.payload || {};
+  return {
+    totalReadTime: payload.totalReadTime,
+    readDays: payload.readDays,
+    dayAverageReadTime: payload.dayAverageReadTime,
+    compare: payload.compare,
+    synced_at: row.synced_at,
+  };
+}
+
+function readCache() {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed?.stats && !parsed?.books) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache() {
+  try {
+    sessionStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        stats: readingStatsByMode,
+        books: wereadBooks,
+      }),
+    );
+  } catch {
+    // sessionStorage full or unavailable — ignore
+  }
+}
+
+function hydrateFromCache(cache) {
+  let hydrated = false;
+
+  if (cache.stats && Object.keys(cache.stats).length > 0) {
+    readingStatsByMode = cache.stats;
+    renderReadingStats();
+    hydrated = true;
+  }
+
+  if (cache.books?.length) {
+    wereadBooks = cache.books;
+    renderWereadBooks();
+    hydrated = true;
+  }
+
+  return hydrated;
+}
+
+function showStatsLoading() {
+  elements.statsEmptyState.hidden = false;
+  elements.statsBody.hidden = true;
+  elements.statsEmptyState.innerHTML = `<p>${LOADING_LABEL}</p>`;
+  elements.statsSyncedAt.textContent = LOADING_LABEL;
+}
+
+function setStatsEmptyMessage(html) {
+  elements.statsEmptyState.hidden = false;
+  elements.statsBody.hidden = true;
+  elements.statsEmptyState.innerHTML = html;
+}
+
 function renderReadingStats() {
   const hasAnyStats = Object.keys(readingStatsByMode).length > 0;
   elements.statsEmptyState.hidden = hasAnyStats;
   elements.statsBody.hidden = !hasAnyStats;
 
   if (!hasAnyStats) {
+    elements.statsSyncedAt.textContent = "同步后显示统计";
+    setStatsEmptyMessage(
+      "<p>还没有阅读统计。运行 <code>node scripts/sync-weread.mjs</code> 同步后即可展示。</p>",
+    );
     return;
   }
 
@@ -114,22 +195,26 @@ function renderReadingStats() {
 }
 
 async function loadReadingStats() {
+  if (!Object.keys(readingStatsByMode).length) {
+    showStatsLoading();
+  }
+
   const { data, error } = await supabase.from("weread_reading_stats").select("mode, payload, synced_at");
 
   if (error) {
     console.error(error);
+    elements.statsSyncedAt.textContent = "加载失败";
+    setStatsEmptyMessage(`<p>加载失败：${escapeHtml(error.message)}</p>`);
     return;
   }
 
   readingStatsByMode = {};
   for (const row of data || []) {
-    readingStatsByMode[row.mode] = {
-      ...row.payload,
-      synced_at: row.synced_at,
-    };
+    readingStatsByMode[row.mode] = slimStatsRow(row);
   }
 
   renderReadingStats();
+  writeCache();
 }
 
 function setActiveStatsMode(mode) {
@@ -146,31 +231,44 @@ for (const tab of elements.statsTabs) {
   tab.addEventListener("click", () => setActiveStatsMode(tab.dataset.mode));
 }
 
+function showWereadLoading() {
+  elements.wereadEmptyState.innerHTML = `<p>${LOADING_LABEL}</p>`;
+  elements.wereadEmptyState.classList.add("is-visible");
+}
+
 function setWereadEmptyState(title, text) {
+  const detail = text
+    ? `<p>${escapeHtml(text)}</p>`
+    : "";
+
   elements.wereadEmptyState.innerHTML = `
     <h3>${escapeHtml(title)}</h3>
-    <p>${escapeHtml(text)}</p>
+    ${detail}
   `;
 }
 
 async function loadWereadBooks() {
-  setWereadEmptyState("正在加载微信读书", "请稍等。");
-  elements.wereadEmptyState.classList.add("is-visible");
+  if (!wereadBooks.length) {
+    showWereadLoading();
+  }
 
-  const { data: bookRows, error: bookError } = await supabase
-    .from("weread_books")
-    .select("*")
-    .order("read_update_time", { ascending: false, nullsFirst: false });
+  const [bookResult, highlightResult] = await Promise.all([
+    supabase
+      .from("weread_books")
+      .select(BOOK_COLUMNS)
+      .order("read_update_time", { ascending: false, nullsFirst: false }),
+    supabase.from("weread_highlights").select(HIGHLIGHT_COLUMNS).order("sort_order", {
+      ascending: true,
+    }),
+  ]);
+
+  const { data: bookRows, error: bookError } = bookResult;
+  const { data: highlightRows, error: highlightError } = highlightResult;
 
   if (bookError) {
     setWereadEmptyState("加载失败", bookError.message);
     throw bookError;
   }
-
-  const { data: highlightRows, error: highlightError } = await supabase
-    .from("weread_highlights")
-    .select("*")
-    .order("sort_order", { ascending: true });
 
   if (highlightError) {
     setWereadEmptyState("加载失败", highlightError.message);
@@ -191,6 +289,7 @@ async function loadWereadBooks() {
   }));
 
   renderWereadBooks();
+  writeCache();
 }
 
 function getFilteredWereadBooks() {
@@ -251,7 +350,7 @@ function renderReadingProgress(book) {
 
 function renderWereadBookCard(book, { showProgress = false, showHighlights = true } = {}) {
   const cover = book.cover_url
-    ? `<img src="${book.cover_url}" alt="${escapeHtml(book.title)} 的封面" />`
+    ? `<img src="${book.cover_url}" alt="${escapeHtml(book.title)} 的封面" loading="lazy" decoding="async" />`
     : `<span class="cover-fallback">${escapeHtml(book.title.slice(0, 4))}</span>`;
   const author = book.author || "未填写作者";
   const openUrl = `${WEREAD_OPEN_URL}${encodeURIComponent(book.weread_book_id)}`;
@@ -337,6 +436,11 @@ function renderWereadBooks() {
 }
 
 elements.wereadSearchInput.addEventListener("input", renderWereadBooks);
+
+const cached = readCache();
+if (cached) {
+  hydrateFromCache(cached);
+}
 
 Promise.all([loadReadingStats(), loadWereadBooks()]).catch((error) => {
   console.error(error);

@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>开卷纪</title>
+    <link rel="dns-prefetch" href="https://jsbppxnrnzsxoqfworjj.supabase.co" />
+    <link rel="preconnect" href="https://jsbppxnrnzsxoqfworjj.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://esm.sh" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -20,7 +23,7 @@
         <div class="stats-header">
           <div>
             <h2 id="statsHeading">阅读时长</h2>
-            <p class="stats-synced" id="statsSyncedAt">同步后显示统计</p>
+            <p class="stats-synced" id="statsSyncedAt">正在加载</p>
           </div>
           <div class="stats-tabs" role="tablist" aria-label="统计周期">
             <button type="button" class="stats-tab is-active" data-mode="weekly" role="tab" aria-selected="true">
@@ -36,7 +39,7 @@
         </div>
 
         <div class="stats-empty" id="statsEmptyState">
-          <p>还没有阅读统计。运行 <code>node scripts/sync-weread.mjs</code> 同步后即可展示。</p>
+          <p>正在加载</p>
         </div>
 
         <div class="stats-body" id="statsBody" hidden>
@@ -71,8 +74,7 @@
         </div>
 
         <div class="empty-state" id="wereadEmptyState">
-          <h3>还没有同步微信读书</h3>
-          <p>配置 WEREAD_API_KEY 后运行同步脚本。</p>
+          <p>正在加载</p>
         </div>
 
         <div class="weread-shelf-host" id="wereadBookGrid"></div>
