@@ -18,7 +18,6 @@ const elements = {
   statsReadDays: document.querySelector("#statsReadDays"),
   statsDayAverage: document.querySelector("#statsDayAverage"),
   statsCompare: document.querySelector("#statsCompare"),
-  statsRankList: document.querySelector("#statsRankList"),
 };
 
 const STATS_MODE_LABELS = {
@@ -26,8 +25,6 @@ const STATS_MODE_LABELS = {
   monthly: "本月",
   annually: "今年",
 };
-
-const STATS_READ_LONGEST_LIMIT = 5;
 
 let readingStatsByMode = {};
 let activeStatsMode = "weekly";
@@ -77,14 +74,6 @@ function formatCompareRatio(compare) {
   return value > 0 ? `较上期 +${percent}%` : `较上期 -${percent}%`;
 }
 
-function readLongestTitle(entry) {
-  return entry.book?.title || entry.albumInfo?.name || "未知书名";
-}
-
-function readLongestAuthor(entry) {
-  return entry.book?.author || entry.albumInfo?.author || "";
-}
-
 function renderReadingStats() {
   const hasAnyStats = Object.keys(readingStatsByMode).length > 0;
   elements.statsEmptyState.hidden = hasAnyStats;
@@ -122,31 +111,6 @@ function renderReadingStats() {
     elements.statsCompare.textContent = "";
     elements.statsCompare.classList.remove("is-up", "is-down");
   }
-
-  const rankItems = (payload.readLongest || []).slice(0, STATS_READ_LONGEST_LIMIT);
-  if (!rankItems.length) {
-    elements.statsRankList.innerHTML = `<li class="stats-rank-empty">暂无排行数据</li>`;
-    return;
-  }
-
-  elements.statsRankList.innerHTML = rankItems
-    .map((entry, index) => {
-      const title = readLongestTitle(entry);
-      const author = readLongestAuthor(entry);
-      const authorLine = author ? `<span class="stats-rank-author">${escapeHtml(author)}</span>` : "";
-
-      return `
-        <li class="stats-rank-item">
-          <span class="stats-rank-index">${index + 1}</span>
-          <div class="stats-rank-meta">
-            <span class="stats-rank-title">${escapeHtml(title)}</span>
-            ${authorLine}
-          </div>
-          <span class="stats-rank-time">${escapeHtml(formatDurationSeconds(entry.readTime))}</span>
-        </li>
-      `;
-    })
-    .join("");
 }
 
 async function loadReadingStats() {
