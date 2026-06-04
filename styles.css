@@ -66,7 +66,8 @@ button:disabled {
   margin-bottom: 20px;
 }
 
-.stats-header h2 {
+.stats-header h2,
+.shelf-header h2 {
   margin-bottom: 6px;
 }
 
@@ -76,11 +77,21 @@ button:disabled {
   font-size: 0.82rem;
 }
 
-.stats-tabs,
-.shelf-tabs {
+.stats-tabs {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fffdf8;
+}
+
+.shelf-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -96,6 +107,12 @@ button:disabled {
   font-size: 0.82rem;
   font-weight: 700;
   padding: 8px 14px;
+}
+
+.shelf-tab {
+  min-width: 0;
+  padding: 8px 10px;
+  text-align: center;
 }
 
 .stats-tab.is-active,
@@ -285,7 +302,6 @@ h3 {
 }
 
 .hero-text,
-.section-heading p,
 .empty-state p {
   color: var(--muted);
 }
@@ -302,14 +318,17 @@ h3 {
   padding: 24px;
 }
 
-.section-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+.shelf-header {
+  margin-bottom: 16px;
 }
 
-.section-heading input {
+.shelf-header .shelf-search {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.shelf-header .shelf-search input {
   width: 100%;
   max-width: 280px;
   border: 1px solid var(--line);
@@ -320,9 +339,17 @@ h3 {
   padding: 12px 14px;
 }
 
-.section-heading input:focus {
+.shelf-header .shelf-search input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(139, 77, 46, 0.12);
+}
+
+.shelf-tabs-row {
+  margin-bottom: 20px;
+}
+
+.shelf-tabs-row .shelf-tabs {
+  width: 100%;
 }
 
 .weread-shelf-host {
@@ -514,14 +541,21 @@ h3 {
   }
 
   .hero,
-  .section-heading,
-  .stats-header {
+  .stats-header,
+  .shelf-header {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .stats-tabs,
-  .shelf-tabs {
+  .shelf-header .shelf-search {
+    justify-content: stretch;
+  }
+
+  .shelf-header .shelf-search input {
+    max-width: none;
+  }
+
+  .stats-tabs {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     width: 100%;
@@ -536,9 +570,6 @@ h3 {
     font-size: 0.8rem;
   }
 
-  .section-heading input {
-    max-width: none;
-  }
 
   .stats-cards {
     grid-template-columns: 1fr;

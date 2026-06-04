@@ -30,7 +30,7 @@ export WEREAD_API_KEY=wrk-xxxxxxxx
 node scripts/sync-weread.mjs
 ```
 
-脚本会拉取书架（`/shelf/sync`）、阅读进度（`/book/getprogress`）、阅读统计（`/readdata/detail`，本周/本月/今年）和最近若干条划线（`/book/bookmarklist`，默认每本 3 条）。网页顶部展示阅读时长统计（可切换周期），书架按「在读 / 读完 / 待读」分组：在读显示进度，暂无划线的书归入待读。
+脚本会拉取书架（`/shelf/sync`）、阅读进度（`/book/getprogress`）、阅读统计（`/readdata/detail`，本周/本月/今年）和最近若干条划线（`/book/bookmarklist`，默认每本 3 条）。网页顶部展示阅读时长统计（可切换周期），书架按「在读 / 读完 / 想读」分组：在读显示进度，暂无划线的书归入想读。
 
 可调整每本书划线条数：
 

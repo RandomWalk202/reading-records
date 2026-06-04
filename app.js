@@ -50,7 +50,7 @@ let activeShelfTab = "reading";
 const SHELF_TAB_LABELS = {
   reading: "在读",
   finished: "读完",
-  toRead: "待读",
+  toRead: "想读",
 };
 
 const SHELF_CARD_OPTIONS = {
@@ -476,23 +476,57 @@ async function loadWereadBooks() {
   writeCache();
 }
 
-function getFilteredWereadBooks() {
-  const keyword = elements.wereadSearchInput.value.trim().toLowerCase();
+const SHELF_TAB_ORDER = ["reading", "finished", "toRead"];
 
+function getBookShelf(book) {
+  if (!book.highlights.length) {
+    return "toRead";
+  }
+
+  if (book.finish_reading) {
+    return "finished";
+  }
+
+  return "reading";
+}
+
+function bookMatchesKeyword(book, keyword) {
+  const fields = [
+    book.title,
+    book.author,
+    ...book.highlights.map((item) => item.mark_text),
+    ...book.highlights.map((item) => item.chapter_title),
+  ];
+
+  return fields.some((value) => String(value ?? "").toLowerCase().includes(keyword));
+}
+
+function getSearchKeyword() {
+  return elements.wereadSearchInput.value.trim().toLowerCase();
+}
+
+function getGlobalSearchMatches(keyword) {
   if (!keyword) {
     return wereadBooks;
   }
 
-  return wereadBooks.filter((book) => {
-    const fields = [
-      book.title,
-      book.author,
-      ...book.highlights.map((item) => item.mark_text),
-      ...book.highlights.map((item) => item.chapter_title),
-    ];
+  return wereadBooks.filter((book) => bookMatchesKeyword(book, keyword));
+}
 
-    return fields.some((value) => String(value ?? "").toLowerCase().includes(keyword));
-  });
+function resolveShelfForSearch(matches) {
+  const shelvesWithMatches = new Set(matches.map(getBookShelf));
+
+  if (shelvesWithMatches.has(activeShelfTab)) {
+    return activeShelfTab;
+  }
+
+  for (const shelf of SHELF_TAB_ORDER) {
+    if (shelvesWithMatches.has(shelf)) {
+      return shelf;
+    }
+  }
+
+  return activeShelfTab;
 }
 
 function renderWereadHighlights(highlights) {
@@ -597,25 +631,31 @@ function setActiveShelfTab(shelf) {
 }
 
 function renderWereadBooks() {
-  const filteredBooks = getFilteredWereadBooks();
-  const { toRead, reading, finished } = classifyWereadBooks(filteredBooks);
+  const keyword = getSearchKeyword();
+  const searchMatches = getGlobalSearchMatches(keyword);
+
+  if (keyword && searchMatches.length > 0) {
+    activeShelfTab = resolveShelfForSearch(searchMatches);
+  }
+
+  const { toRead, reading, finished } = classifyWereadBooks(searchMatches);
   const shelves = { reading, finished, toRead };
   const activeBooks = shelves[activeShelfTab] || [];
 
   updateShelfTabs({ reading, finished, toRead });
 
   const hasBooks = wereadBooks.length > 0;
-  const hasSearch = elements.wereadSearchInput.value.trim().length > 0;
+  const hasSearch = keyword.length > 0;
   elements.wereadEmptyState.classList.toggle("is-visible", !hasBooks || activeBooks.length === 0);
 
   if (!hasBooks) {
     setWereadEmptyState("还没有同步微信读书", "配置 WEREAD_API_KEY 后运行 node scripts/sync-weread.mjs。");
-  } else if (hasSearch && filteredBooks.length === 0) {
+  } else if (hasSearch && searchMatches.length === 0) {
     setWereadEmptyState("没有匹配的书籍", "换个关键词再试试。");
   } else if (activeBooks.length === 0) {
     setWereadEmptyState(
       `${SHELF_TAB_LABELS[activeShelfTab]}暂无书籍`,
-      "切换其他标签或调整搜索条件。",
+      hasSearch ? "试试其他关键词或切换标签。" : "切换其他标签查看。",
     );
   }
 

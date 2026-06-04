@@ -70,8 +70,21 @@
         </div>
       </section>
 
-      <section class="panel book-section weread-section" aria-label="微信读书书架">
-        <div class="section-heading">
+      <section class="panel book-section weread-section" aria-labelledby="shelfHeading">
+        <div class="stats-header shelf-header">
+          <div>
+            <h2 id="shelfHeading">阅读记录</h2>
+          </div>
+          <div class="shelf-search">
+            <input
+              id="wereadSearchInput"
+              type="search"
+              placeholder="搜索书名、作者或划线"
+            />
+          </div>
+        </div>
+
+        <div class="shelf-tabs-row">
           <div class="shelf-tabs" role="tablist" aria-label="书架分类">
             <button
               type="button"
@@ -98,14 +111,9 @@
               role="tab"
               aria-selected="false"
             >
-              待读(0)
+              想读(0)
             </button>
           </div>
-          <input
-            id="wereadSearchInput"
-            type="search"
-            placeholder="搜索书名、作者或划线"
-          />
         </div>
 
         <div class="empty-state" id="wereadEmptyState">
