@@ -12,7 +12,7 @@ source "$ROOT/scripts/lib/common.sh"
 
 usage() {
   echo "Usage: $0 [install|uninstall|status]"
-  echo "  install   — run sync every day at 08:00 (local time)"
+  echo "  install   — run sync every day at 10:00 (local time)"
   echo "  uninstall — remove scheduled job"
   echo "  status    — show whether the job is loaded"
 }
@@ -40,7 +40,7 @@ write_plist() {
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key>
-    <integer>8</integer>
+    <integer>10</integer>
     <key>Minute</key>
     <integer>0</integer>
   </dict>
@@ -90,7 +90,7 @@ case "$cmd" in
     write_plist
     launchctl bootout "gui/$(id -u)/${LABEL}" 2>/dev/null || true
     launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST"
-    echo "Installed. Sync runs daily at 08:00."
+    echo "Installed. Sync runs daily at 10:00."
     echo "Plist: $PLIST_DEST"
     echo "Logs:  $ROOT/logs/sync-weread.log"
     echo ""

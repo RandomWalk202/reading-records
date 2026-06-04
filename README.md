@@ -48,7 +48,7 @@ cp .env.example .env
 # 编辑 .env，填入 WEREAD_API_KEY=wrk-...
 ```
 
-2. 安装定时任务（默认每天 **08:00** 执行一次）：
+2. 安装定时任务（默认每天 **10:00** 执行一次）：
 
 ```bash
 chmod +x scripts/install-daily-sync.sh scripts/sync-weread-daily.sh
