@@ -408,9 +408,25 @@ h3 {
   height: 102px;
   flex-shrink: 0;
   overflow: hidden;
+  border: 0;
+  padding: 0;
   border-radius: 10px;
   background: linear-gradient(145deg, #ead7c2, #f8efe5);
   place-items: center;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.weread-cover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(77, 46, 26, 0.16);
+}
+
+.weread-cover:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .weread-cover img {
@@ -529,6 +545,170 @@ h3 {
 
 .weread-link:hover {
   text-decoration: underline;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: var(--accent);
+  color: #fffaf3;
+}
+
+.primary-button:hover {
+  background: var(--accent-dark);
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+}
+
+.review-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: auto;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 0;
+  background: #fffdf8;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.review-dialog::backdrop {
+  background: rgba(45, 36, 29, 0.42);
+}
+
+.review-dialog-form {
+  display: grid;
+  gap: 14px;
+  padding: 22px 22px 20px;
+}
+
+.review-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-dialog-title {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+.review-dialog-author {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.review-dialog-close {
+  border: 0;
+  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: rgba(139, 77, 46, 0.1);
+  color: var(--accent-dark);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-dialog-view {
+  display: grid;
+  gap: 8px;
+}
+
+.review-dialog-view[hidden],
+.review-dialog-compose[hidden] {
+  display: none;
+}
+
+.review-entry-date {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.review-entry-text {
+  margin: 0;
+  color: #4d4036;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.review-dialog-manage {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.text-button,
+.danger-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.text-button {
+  background: rgba(139, 77, 46, 0.1);
+  color: var(--accent-dark);
+}
+
+.danger-button {
+  background: rgba(183, 53, 53, 0.11);
+  color: var(--danger);
+}
+
+.review-dialog-text {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fffaf3;
+  color: var(--text);
+  outline: none;
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 180px;
+  line-height: 1.65;
+  font: inherit;
+}
+
+.review-dialog-text:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(139, 77, 46, 0.12);
+}
+
+.review-dialog-status {
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--accent-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.review-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .empty-state {

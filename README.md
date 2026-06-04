@@ -79,5 +79,5 @@ NODE_BIN=/你电脑上/node的完整路径
 
 ## 后端
 
-- Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`
+- Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`、`weread_book_reviews`（读后感，仅弹窗展示）
 - 当前版本为了方便共享，允许公开读取、写入（同步脚本使用）

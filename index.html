@@ -124,6 +124,42 @@
       </section>
     </main>
 
+    <dialog class="review-dialog" id="reviewDialog" aria-labelledby="reviewDialogTitle">
+      <form class="review-dialog-form" id="reviewForm" method="dialog">
+        <header class="review-dialog-header">
+          <div>
+            <h2 class="review-dialog-title" id="reviewDialogTitle"></h2>
+            <p class="review-dialog-author" id="reviewDialogAuthor"></p>
+          </div>
+          <button class="review-dialog-close" type="button" id="reviewDialogClose" aria-label="关闭">
+            ×
+          </button>
+        </header>
+        <div class="review-dialog-view" id="reviewDialogView" hidden>
+          <time class="review-entry-date" id="reviewDialogDate"></time>
+          <p class="review-entry-text" id="reviewDialogSavedText"></p>
+          <div class="review-dialog-manage">
+            <button type="button" class="text-button" id="reviewDialogEdit">修改</button>
+            <button type="button" class="danger-button" id="reviewDialogDelete">删除</button>
+          </div>
+        </div>
+        <div class="review-dialog-compose" id="reviewDialogCompose">
+          <textarea
+            class="review-dialog-text"
+            id="reviewDialogText"
+            rows="10"
+            placeholder="写下读完这本书的感受、摘录或备忘…"
+            aria-labelledby="reviewDialogTitle"
+          ></textarea>
+        </div>
+        <p class="review-dialog-status" id="reviewDialogStatus" role="status" aria-live="polite"></p>
+        <footer class="review-dialog-actions">
+          <button class="secondary-button" type="button" id="reviewDialogCancel">取消</button>
+          <button class="primary-button" type="submit" id="reviewDialogSave">保存</button>
+        </footer>
+      </form>
+    </dialog>
+
     <script type="module" src="./app.js"></script>
   </body>
 </html>
