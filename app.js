@@ -41,7 +41,7 @@ const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const DAY_MS = 86400000;
 const MONTHLY_TICK_INTERVAL = 5;
 const BOOK_COLUMNS =
-  "weread_book_id,title,author,cover_url,finish_reading,progress,read_update_time";
+  "weread_book_id,title,author,cover_url,finish_reading,progress,finish_time,read_time_seconds,read_update_time";
 const HIGHLIGHT_COLUMNS = "weread_book_id,mark_text,sort_order";
 
 let wereadBooks = [];
@@ -55,7 +55,7 @@ const SHELF_TAB_LABELS = {
 
 const SHELF_CARD_OPTIONS = {
   reading: { showProgress: true, showHighlights: true },
-  finished: { showHighlights: true },
+  finished: { showHighlights: true, showFinishedMeta: true },
   toRead: { showHighlights: false },
 };
 
@@ -549,6 +549,43 @@ function renderWereadHighlights(highlights) {
   return `<ul class="highlight-list">${items}</ul>`;
 }
 
+function formatShelfDate(isoTime) {
+  if (!isoTime) {
+    return null;
+  }
+
+  const date = new Date(isoTime);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function renderFinishedMeta(book) {
+  const parts = [];
+  const finishDate = formatShelfDate(book.finish_time);
+  const readDuration = formatDurationSeconds(book.read_time_seconds);
+
+  if (finishDate) {
+    parts.push(`读完于 ${finishDate}`);
+  }
+
+  if (book.read_time_seconds > 0) {
+    parts.push(`阅读 ${readDuration}`);
+  }
+
+  if (!parts.length) {
+    return "";
+  }
+
+  return `<p class="weread-finished-meta">${escapeHtml(parts.join(" · "))}</p>`;
+}
+
 function renderReadingProgress(book) {
   if (book.progress === null || book.progress === undefined) {
     return `<p class="reading-progress-text">阅读进度未知</p>`;
@@ -566,13 +603,17 @@ function renderReadingProgress(book) {
   `;
 }
 
-function renderWereadBookCard(book, { showProgress = false, showHighlights = true } = {}) {
+function renderWereadBookCard(
+  book,
+  { showProgress = false, showHighlights = true, showFinishedMeta = false } = {},
+) {
   const cover = book.cover_url
     ? `<img src="${book.cover_url}" alt="${escapeHtml(book.title)} 的封面" loading="lazy" decoding="async" />`
     : `<span class="cover-fallback">${escapeHtml(book.title.slice(0, 4))}</span>`;
   const author = book.author || "未填写作者";
   const openUrl = `${WEREAD_OPEN_URL}${encodeURIComponent(book.weread_book_id)}`;
   const progressBlock = showProgress ? renderReadingProgress(book) : "";
+  const finishedMetaBlock = showFinishedMeta ? renderFinishedMeta(book) : "";
   const highlightsBlock = showHighlights ? renderWereadHighlights(book.highlights) : "";
 
   return `
@@ -583,12 +624,34 @@ function renderWereadBookCard(book, { showProgress = false, showHighlights = tru
           <h3 class="weread-title">${escapeHtml(book.title)}</h3>
           <p class="weread-author">${escapeHtml(author)}</p>
         </div>
+        ${finishedMetaBlock}
         ${progressBlock}
         ${highlightsBlock}
         <a class="weread-link" href="${openUrl}">在微信读书打开</a>
       </div>
     </article>
   `;
+}
+
+function compareFinishTimeDesc(left, right) {
+  const leftTime = Date.parse(left.finish_time || "");
+  const rightTime = Date.parse(right.finish_time || "");
+  const leftValid = Number.isFinite(leftTime);
+  const rightValid = Number.isFinite(rightTime);
+
+  if (!leftValid && !rightValid) {
+    return 0;
+  }
+
+  if (!leftValid) {
+    return 1;
+  }
+
+  if (!rightValid) {
+    return -1;
+  }
+
+  return rightTime - leftTime;
 }
 
 function classifyWereadBooks(books) {
@@ -609,6 +672,8 @@ function classifyWereadBooks(books) {
 
     reading.push(book);
   }
+
+  finished.sort(compareFinishTimeDesc);
 
   return { toRead, reading, finished };
 }

@@ -141,14 +141,30 @@ async function main() {
     totalHighlights += highlightCount;
 
     let progress = null;
+    let finishTime = null;
+    let readTimeSeconds = null;
+
     try {
       const progressData = await weread("/book/getprogress", { bookId: book.bookId });
-      const rawProgress = progressData.book?.progress;
+      const bookProgress = progressData.book || {};
+      const rawProgress = bookProgress.progress;
+
       if (rawProgress !== undefined && rawProgress !== null) {
         progress = Number(rawProgress);
       }
+
+      const rawReadTime = bookProgress.readingTime ?? bookProgress.recordReadingTime;
+      if (rawReadTime !== undefined && rawReadTime !== null) {
+        readTimeSeconds = Math.max(0, Number(rawReadTime));
+      }
+
+      if (bookProgress.finishTime) {
+        finishTime = toIsoTime(bookProgress.finishTime);
+      }
     } catch {
       progress = null;
+      finishTime = null;
+      readTimeSeconds = null;
     }
 
     const finishReading = book.finishReading === 1 || progress === 100;
@@ -164,6 +180,8 @@ async function main() {
           cover_url: book.cover || null,
           finish_reading: finishReading,
           progress,
+          finish_time: finishReading ? finishTime : null,
+          read_time_seconds: readTimeSeconds,
           read_update_time: toIsoTime(book.readUpdateTime),
           synced_at: new Date().toISOString(),
         },
