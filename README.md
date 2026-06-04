@@ -65,6 +65,8 @@ tail -20 logs/sync-weread.log
 卸载定时任务：`./scripts/install-daily-sync.sh uninstall`  
 查看是否已安装：`./scripts/install-daily-sync.sh status`
 
+定时任务实际在 `~/Library/Application Support/reading-records/` 运行（避免项目在桌面时 macOS 拦截 launchd）。日志见该目录下的 `logs/sync-weread.log`。修改项目 `.env` 后请再执行一次 `install` 以同步配置。
+
 修改执行时间：编辑 `~/Library/LaunchAgents/com.reading-records.weread-sync.plist` 里的 `Hour` / `Minute`，然后执行 `install` 重装。
 
 若安装时报 `node not found`，在终端执行 `which node`，把路径写入 `.env`：
