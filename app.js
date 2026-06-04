@@ -8,8 +8,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const elements = {
   wereadBookGrid: document.querySelector("#wereadBookGrid"),
   wereadEmptyState: document.querySelector("#wereadEmptyState"),
-  wereadCount: document.querySelector("#wereadCount"),
   wereadSearchInput: document.querySelector("#wereadSearchInput"),
+  shelfTabs: document.querySelectorAll(".shelf-tab"),
   statsTabs: document.querySelectorAll(".stats-tab"),
   statsEmptyState: document.querySelector("#statsEmptyState"),
   statsBody: document.querySelector("#statsBody"),
@@ -18,6 +18,8 @@ const elements = {
   statsReadDays: document.querySelector("#statsReadDays"),
   statsDayAverage: document.querySelector("#statsDayAverage"),
   statsCompare: document.querySelector("#statsCompare"),
+  statsDailyChartSection: document.querySelector("#statsDailyChartSection"),
+  statsDailyChartBars: document.querySelector("#statsDailyChartBars"),
 };
 
 const STATS_MODE_LABELS = {
@@ -32,12 +34,30 @@ let activeStatsMode = "weekly";
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 3;
 const LOADING_LABEL = "正在加载";
-const CACHE_KEY = "reading-records-cache-v1";
+const CACHE_KEY = "reading-records-cache-v3";
+const MIN_READ_DAY_SECONDS = 60;
+
+const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
+const DAY_MS = 86400000;
+const MONTHLY_TICK_INTERVAL = 5;
 const BOOK_COLUMNS =
   "weread_book_id,title,author,cover_url,finish_reading,progress,read_update_time";
 const HIGHLIGHT_COLUMNS = "weread_book_id,mark_text,sort_order";
 
 let wereadBooks = [];
+let activeShelfTab = "reading";
+
+const SHELF_TAB_LABELS = {
+  reading: "在读",
+  finished: "读完",
+  toRead: "待读",
+};
+
+const SHELF_CARD_OPTIONS = {
+  reading: { showProgress: true, showHighlights: true },
+  finished: { showHighlights: true },
+  toRead: { showHighlights: false },
+};
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => {
@@ -69,6 +89,165 @@ function formatDurationSeconds(totalSeconds) {
   return "不足 1 分钟";
 }
 
+function formatShortDuration(seconds) {
+  const total = Math.max(0, Number(seconds || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours} 小时 ${minutes} 分`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes} 分钟`;
+  }
+
+  if (total > 0) {
+    return "不足 1 分钟";
+  }
+
+  return "未阅读";
+}
+
+function lookupReadSeconds(readTimes, timestampMs) {
+  const keySec = Math.floor(timestampMs / 1000);
+  const raw = readTimes?.[keySec] ?? readTimes?.[String(keySec)];
+  return Math.max(0, Number(raw) || 0);
+}
+
+function buildChartBuckets(payload, mode) {
+  const baseTime = Number(payload?.baseTime || 0);
+  const readTimes = payload?.readTimes;
+
+  if (!baseTime || !readTimes || typeof readTimes !== "object") {
+    return [];
+  }
+
+  if (mode === "weekly") {
+    const weekStartMs = baseTime * 1000;
+    return WEEKDAY_LABELS.map((weekday, index) => {
+      const timestamp = weekStartMs + index * DAY_MS;
+      return {
+        timestamp,
+        seconds: lookupReadSeconds(readTimes, timestamp),
+        label: `周${weekday}`,
+      };
+    });
+  }
+
+  if (mode === "monthly") {
+    const monthStart = new Date(baseTime * 1000);
+    const year = monthStart.getFullYear();
+    const month = monthStart.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    return Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      const date = new Date(year, month, day);
+      date.setHours(0, 0, 0, 0);
+      const showTick = day % MONTHLY_TICK_INTERVAL === 0;
+
+      return {
+        timestamp: date.getTime(),
+        seconds: lookupReadSeconds(readTimes, date.getTime()),
+        label: showTick ? String(day) : "",
+      };
+    });
+  }
+
+  if (mode === "annually") {
+    const year = new Date(baseTime * 1000).getFullYear();
+    return Array.from({ length: 12 }, (_, monthIndex) => {
+      const date = new Date(year, monthIndex, 1);
+      date.setHours(0, 0, 0, 0);
+      return {
+        timestamp: date.getTime(),
+        seconds: lookupReadSeconds(readTimes, date.getTime()),
+        label: `${monthIndex + 1}月`,
+      };
+    });
+  }
+
+  return [];
+}
+
+function formatChartTooltip(bucket, mode) {
+  const date = new Date(bucket.timestamp);
+  const duration = formatShortDuration(bucket.seconds);
+  const readDayNote =
+    bucket.seconds >= MIN_READ_DAY_SECONDS ? "（有效阅读日）" : "";
+
+  if (mode === "annually") {
+    return `${date.getFullYear()}年${date.getMonth() + 1}月：${duration}${readDayNote}`;
+  }
+
+  if (mode === "weekly") {
+    return `${bucket.label}：${duration}${readDayNote}`;
+  }
+
+  return `${date.getMonth() + 1}月${date.getDate()}日：${duration}${readDayNote}`;
+}
+
+function renderChartLabel(bucket, mode) {
+  if (mode === "monthly") {
+    const tickClass = bucket.label
+      ? "stats-chart-label stats-chart-tick"
+      : "stats-chart-label stats-chart-tick is-spacer";
+
+    return `<span class="${tickClass}">${escapeHtml(bucket.label)}</span>`;
+  }
+
+  if (!bucket.label) {
+    return "";
+  }
+
+  return `<span class="stats-chart-label">${escapeHtml(bucket.label)}</span>`;
+}
+
+function renderDailyReadChart(payload, mode) {
+  const buckets = buildChartBuckets(payload, mode);
+
+  if (!buckets.length) {
+    elements.statsDailyChartSection.hidden = true;
+    elements.statsDailyChartBars.innerHTML = "";
+    elements.statsDailyChartBars.className = "stats-chart-bars";
+    return;
+  }
+
+  const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
+  const readDayCount = buckets.filter((bucket) => bucket.seconds >= MIN_READ_DAY_SECONDS).length;
+  const readDayUnit = mode === "annually" ? "个月" : "天";
+
+  elements.statsDailyChartSection.hidden = false;
+  elements.statsDailyChartBars.className = `stats-chart-bars stats-chart-bars--${mode}`;
+  elements.statsDailyChartBars.setAttribute(
+    "aria-label",
+    `${STATS_MODE_LABELS[mode]}阅读分布，有效阅读 ${readDayCount} ${readDayUnit}`,
+  );
+
+  elements.statsDailyChartBars.innerHTML = buckets
+    .map((bucket) => {
+      const heightPercent =
+        bucket.seconds > 0 ? Math.max(8, Math.round((bucket.seconds / maxSeconds) * 100)) : 0;
+      const isReadDay = bucket.seconds >= MIN_READ_DAY_SECONDS;
+      const tooltip = formatChartTooltip(bucket, mode);
+      const labelMarkup = renderChartLabel(bucket, mode);
+
+      return `
+        <div class="stats-chart-col">
+          <div class="stats-chart-bar-wrap" title="${escapeHtml(tooltip)}">
+            <div
+              class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
+              style="height: ${heightPercent}%"
+            ></div>
+          </div>
+          ${labelMarkup}
+        </div>
+      `;
+    })
+    .join("");
+}
+
 function formatCompareRatio(compare) {
   const value = Number(compare);
   if (!Number.isFinite(value) || value === 0) {
@@ -86,6 +265,8 @@ function slimStatsRow(row) {
     readDays: payload.readDays,
     dayAverageReadTime: payload.dayAverageReadTime,
     compare: payload.compare,
+    baseTime: payload.baseTime,
+    readTimes: payload.readTimes,
     synced_at: row.synced_at,
   };
 }
@@ -166,6 +347,7 @@ function renderReadingStats() {
 
   const payload = readingStatsByMode[activeStatsMode];
   if (!payload) {
+    elements.statsDailyChartSection.hidden = true;
     elements.statsEmptyState.hidden = false;
     elements.statsBody.hidden = true;
     elements.statsSyncedAt.textContent = `${STATS_MODE_LABELS[activeStatsMode]}暂无数据`;
@@ -192,6 +374,8 @@ function renderReadingStats() {
     elements.statsCompare.textContent = "";
     elements.statsCompare.classList.remove("is-up", "is-down");
   }
+
+  renderDailyReadChart(payload, activeStatsMode);
 }
 
 async function loadReadingStats() {
@@ -373,21 +557,6 @@ function renderWereadBookCard(book, { showProgress = false, showHighlights = tru
   `;
 }
 
-function renderWereadShelfGroup(title, books, cardOptions = {}) {
-  if (!books.length) {
-    return "";
-  }
-
-  return `
-    <section class="weread-group">
-      <h3 class="weread-group-title">${escapeHtml(title)}<span class="weread-group-count">${books.length}</span></h3>
-      <div class="weread-list">
-        ${books.map((book) => renderWereadBookCard(book, cardOptions)).join("")}
-      </div>
-    </section>
-  `;
-}
-
 function classifyWereadBooks(books) {
   const toRead = [];
   const reading = [];
@@ -410,29 +579,62 @@ function classifyWereadBooks(books) {
   return { toRead, reading, finished };
 }
 
+function updateShelfTabs({ reading, finished, toRead }) {
+  const counts = { reading: reading.length, finished: finished.length, toRead: toRead.length };
+
+  for (const tab of elements.shelfTabs) {
+    const shelf = tab.dataset.shelf;
+    const isActive = shelf === activeShelfTab;
+    tab.textContent = `${SHELF_TAB_LABELS[shelf]}(${counts[shelf]})`;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  }
+}
+
+function setActiveShelfTab(shelf) {
+  activeShelfTab = shelf;
+  renderWereadBooks();
+}
+
 function renderWereadBooks() {
   const filteredBooks = getFilteredWereadBooks();
   const { toRead, reading, finished } = classifyWereadBooks(filteredBooks);
+  const shelves = { reading, finished, toRead };
+  const activeBooks = shelves[activeShelfTab] || [];
 
-  elements.wereadCount.textContent = `共 ${wereadBooks.length} 本 · 在读 ${reading.length} · 读完 ${finished.length} · 待读 ${toRead.length}`;
-  elements.wereadEmptyState.classList.toggle("is-visible", filteredBooks.length === 0);
+  updateShelfTabs({ reading, finished, toRead });
 
-  if (wereadBooks.length === 0) {
+  const hasBooks = wereadBooks.length > 0;
+  const hasSearch = elements.wereadSearchInput.value.trim().length > 0;
+  elements.wereadEmptyState.classList.toggle("is-visible", !hasBooks || activeBooks.length === 0);
+
+  if (!hasBooks) {
     setWereadEmptyState("还没有同步微信读书", "配置 WEREAD_API_KEY 后运行 node scripts/sync-weread.mjs。");
-  } else if (filteredBooks.length === 0) {
+  } else if (hasSearch && filteredBooks.length === 0) {
     setWereadEmptyState("没有匹配的书籍", "换个关键词再试试。");
+  } else if (activeBooks.length === 0) {
+    setWereadEmptyState(
+      `${SHELF_TAB_LABELS[activeShelfTab]}暂无书籍`,
+      "切换其他标签或调整搜索条件。",
+    );
   }
 
+  const cardOptions = SHELF_CARD_OPTIONS[activeShelfTab] || {};
+
   elements.wereadBookGrid.innerHTML =
-    filteredBooks.length === 0
+    activeBooks.length === 0
       ? ""
       : `
         <div class="weread-shelf">
-          ${renderWereadShelfGroup("在读", reading, { showProgress: true, showHighlights: true })}
-          ${renderWereadShelfGroup("读完", finished, { showHighlights: true })}
-          ${renderWereadShelfGroup("待读", toRead, { showHighlights: false })}
+          <div class="weread-list">
+            ${activeBooks.map((book) => renderWereadBookCard(book, cardOptions)).join("")}
+          </div>
         </div>
       `;
+}
+
+for (const tab of elements.shelfTabs) {
+  tab.addEventListener("click", () => setActiveShelfTab(tab.dataset.shelf));
 }
 
 elements.wereadSearchInput.addEventListener("input", renderWereadBooks);

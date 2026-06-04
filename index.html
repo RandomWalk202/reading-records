@@ -58,13 +58,48 @@
               <p class="stats-card-note" id="statsCompare" hidden></p>
             </article>
           </div>
+
+          <section class="stats-chart" id="statsDailyChartSection" hidden>
+            <div
+              class="stats-chart-bars"
+              id="statsDailyChartBars"
+              role="img"
+              aria-label="阅读时长分布"
+            ></div>
+          </section>
         </div>
       </section>
 
-      <section class="panel book-section weread-section" aria-labelledby="wereadCount">
+      <section class="panel book-section weread-section" aria-label="微信读书书架">
         <div class="section-heading">
-          <div>
-            <p class="shelf-summary" id="wereadCount">共 0 本书</p>
+          <div class="shelf-tabs" role="tablist" aria-label="书架分类">
+            <button
+              type="button"
+              class="shelf-tab is-active"
+              data-shelf="reading"
+              role="tab"
+              aria-selected="true"
+            >
+              在读(0)
+            </button>
+            <button
+              type="button"
+              class="shelf-tab"
+              data-shelf="finished"
+              role="tab"
+              aria-selected="false"
+            >
+              读完(0)
+            </button>
+            <button
+              type="button"
+              class="shelf-tab"
+              data-shelf="toRead"
+              role="tab"
+              aria-selected="false"
+            >
+              待读(0)
+            </button>
           </div>
           <input
             id="wereadSearchInput"
