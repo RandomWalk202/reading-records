@@ -1,9 +1,99 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const SUPABASE_URL = "https://jsbppxnrnzsxoqfworjj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zLmaAY6WoAl8-fKy0WYMYw_RkvoueHC";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const REST_HEADERS = {
+  apikey: SUPABASE_PUBLISHABLE_KEY,
+  Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+};
+
+function restOrder(column, { ascending = true, nullsFirst = true } = {}) {
+  const dir = ascending ? "asc" : "desc";
+  const nulls = nullsFirst ? "nullsfirst" : "nullslast";
+  return `${column}.${dir}.${nulls}`;
+}
+
+async function restSelect(table, { select, order } = {}) {
+  const params = new URLSearchParams({ select });
+  const orders = order ? (Array.isArray(order) ? order : [order]) : [];
+
+  for (const item of orders) {
+    params.append("order", item);
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    headers: REST_HEADERS,
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    return { data: null, error: { message: detail || res.statusText } };
+  }
+
+  return { data: await res.json(), error: null };
+}
+
+async function restInsert(table, rows, { returning = false, single = false } = {}) {
+  const headers = {
+    ...REST_HEADERS,
+    "Content-Type": "application/json",
+    Prefer: returning ? "return=representation" : "return=minimal",
+  };
+
+  if (single) {
+    headers.Accept = "application/vnd.pgrst.object+json";
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(rows),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    return { data: null, error: { message: detail || res.statusText } };
+  }
+
+  if (!returning) {
+    return { data: null, error: null };
+  }
+
+  return { data: await res.json(), error: null };
+}
+
+async function restUpdate(table, body, filter) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: "PATCH",
+    headers: {
+      ...REST_HEADERS,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+      Accept: "application/vnd.pgrst.object+json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    return { data: null, error: { message: detail || res.statusText } };
+  }
+
+  return { data: await res.json(), error: null };
+}
+
+async function restDelete(table, filter) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: "DELETE",
+    headers: REST_HEADERS,
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    return { error: { message: detail || res.statusText } };
+  }
+
+  return { error: null };
+}
 
 const elements = {
   wereadBookGrid: document.querySelector("#wereadBookGrid"),
@@ -49,7 +139,8 @@ let activeStatsMode = "weekly";
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 3;
 const LOADING_LABEL = "正在加载";
-const CACHE_KEY = "reading-records-cache-v3";
+const CACHE_KEY = "reading-records-cache-v4";
+const CACHE_LEGACY_KEY = "reading-records-cache-v3";
 const REVIEWS_STORAGE_KEY = "reading-records.book-reviews-v1";
 const REVIEWS_MIGRATED_KEY = "reading-records.book-reviews-migrated-v1";
 const REVIEW_COLUMNS = "id,weread_book_id,review_text,created_at";
@@ -293,32 +384,45 @@ function slimStatsRow(row) {
 }
 
 function readCache() {
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    if (!raw) {
-      return null;
+  const sources = [
+    () => localStorage.getItem(CACHE_KEY),
+    () => sessionStorage.getItem(CACHE_LEGACY_KEY),
+  ];
+
+  for (const getRaw of sources) {
+    try {
+      const raw = getRaw();
+      if (!raw) {
+        continue;
+      }
+
+      const parsed = JSON.parse(raw);
+      if (!parsed?.stats && !parsed?.books?.length) {
+        continue;
+      }
+
+      return parsed;
+    } catch {
+      // ignore corrupt cache
     }
-    const parsed = JSON.parse(raw);
-    if (!parsed?.stats && !parsed?.books) {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
   }
+
+  return null;
 }
 
 function writeCache() {
   try {
-    sessionStorage.setItem(
+    localStorage.setItem(
       CACHE_KEY,
       JSON.stringify({
+        savedAt: Date.now(),
         stats: readingStatsByMode,
         books: wereadBooks,
       }),
     );
+    sessionStorage.removeItem(CACHE_LEGACY_KEY);
   } catch {
-    // sessionStorage full or unavailable — ignore
+    // localStorage full or unavailable — ignore
   }
 }
 
@@ -404,7 +508,9 @@ async function loadReadingStats() {
     showStatsLoading();
   }
 
-  const { data, error } = await supabase.from("weread_reading_stats").select("mode, payload, synced_at");
+  const { data, error } = await restSelect("weread_reading_stats", {
+    select: "mode,payload,synced_at",
+  });
 
   if (error) {
     console.error(error);
@@ -452,35 +558,9 @@ function setWereadEmptyState(title, text) {
   `;
 }
 
-async function loadWereadBooks() {
-  if (!wereadBooks.length) {
-    showWereadLoading();
-  }
-
-  const [bookResult, highlightResult] = await Promise.all([
-    supabase
-      .from("weread_books")
-      .select(BOOK_COLUMNS)
-      .order("read_update_time", { ascending: false, nullsFirst: false }),
-    supabase.from("weread_highlights").select(HIGHLIGHT_COLUMNS).order("sort_order", {
-      ascending: true,
-    }),
-  ]);
-
-  const { data: bookRows, error: bookError } = bookResult;
-  const { data: highlightRows, error: highlightError } = highlightResult;
-
-  if (bookError) {
-    setWereadEmptyState("加载失败", bookError.message);
-    throw bookError;
-  }
-
-  if (highlightError) {
-    setWereadEmptyState("加载失败", highlightError.message);
-    throw highlightError;
-  }
-
+function attachHighlightsToBooks(bookRows, highlightRows) {
   const highlightsByBook = {};
+
   for (const highlight of highlightRows || []) {
     if (!highlightsByBook[highlight.weread_book_id]) {
       highlightsByBook[highlight.weread_book_id] = [];
@@ -488,19 +568,92 @@ async function loadWereadBooks() {
     highlightsByBook[highlight.weread_book_id].push(highlight);
   }
 
-  wereadBooks = (bookRows || []).map((book) => ({
-    ...book,
-    highlights: highlightsByBook[book.weread_book_id] || [],
-  }));
+  return (bookRows || []).map((book) => {
+    const highlights = highlightsByBook[book.weread_book_id] || [];
+    return {
+      ...book,
+      hasHighlights: highlights.length > 0,
+      highlights,
+    };
+  });
+}
 
+function attachHighlightFlags(bookRows, bookIdsWithHighlights, previousById = new Map()) {
+  const idSet =
+    bookIdsWithHighlights instanceof Set
+      ? bookIdsWithHighlights
+      : new Set(bookIdsWithHighlights);
+
+  return (bookRows || []).map((book) => {
+    const previous = previousById.get(book.weread_book_id);
+    const hasHighlights = idSet.has(book.weread_book_id);
+
+    return {
+      ...book,
+      hasHighlights,
+      highlights: previous?.highlights?.length ? previous.highlights : [],
+    };
+  });
+}
+
+async function loadWereadHighlightDetails(bookRows) {
+  const { data: highlightRows, error: highlightError } = await restSelect("weread_highlights", {
+    select: HIGHLIGHT_COLUMNS,
+    order: restOrder("sort_order", { ascending: true }),
+  });
+
+  if (highlightError) {
+    console.warn("Highlights load failed:", highlightError.message);
+    return;
+  }
+
+  wereadBooks = attachHighlightsToBooks(bookRows, highlightRows);
   renderWereadBooks();
   writeCache();
+}
+
+async function loadWereadBooks() {
+  if (!wereadBooks.length) {
+    showWereadLoading();
+  }
+
+  const { data: bookRows, error: bookError } = await restSelect("weread_books", {
+    select: BOOK_COLUMNS,
+    order: restOrder("read_update_time", { ascending: false, nullsFirst: false }),
+  });
+
+  if (bookError) {
+    setWereadEmptyState("加载失败", bookError.message);
+    throw bookError;
+  }
+
+  const { data: highlightIdRows, error: highlightIdError } = await restSelect("weread_highlights", {
+    select: "weread_book_id",
+  });
+
+  if (highlightIdError) {
+    setWereadEmptyState("加载失败", highlightIdError.message);
+    throw highlightIdError;
+  }
+
+  const bookIdsWithHighlights = new Set(
+    (highlightIdRows || []).map((row) => row.weread_book_id),
+  );
+  const previousById = new Map(wereadBooks.map((book) => [book.weread_book_id, book]));
+
+  wereadBooks = attachHighlightFlags(bookRows, bookIdsWithHighlights, previousById);
+  renderWereadBooks();
+  writeCache();
+
+  void loadWereadHighlightDetails(bookRows);
 }
 
 const SHELF_TAB_ORDER = ["reading", "finished", "toRead"];
 
 function getBookShelf(book) {
-  if (!book.highlights.length) {
+  const hasHighlights = book.highlights.length > 0 || book.hasHighlights;
+
+  if (!hasHighlights) {
     return "toRead";
   }
 
@@ -693,7 +846,7 @@ async function migrateLocalBookReviews() {
     created_at: review.updatedAt || now,
   }));
 
-  const { error } = await supabase.from("weread_book_reviews").insert(rows);
+  const { error } = await restInsert("weread_book_reviews", rows);
 
   if (error) {
     console.warn("Migrate local reviews failed:", error.message);
@@ -707,7 +860,7 @@ async function migrateLocalBookReviews() {
 async function loadBookReviewsFromSupabase() {
   await migrateLocalBookReviews();
 
-  const { data, error } = await supabase.from("weread_book_reviews").select(REVIEW_COLUMNS);
+  const { data, error } = await restSelect("weread_book_reviews", { select: REVIEW_COLUMNS });
 
   if (error) {
     console.error(error);
@@ -806,23 +959,22 @@ async function saveActiveBookReview() {
 
   if (existing?.id) {
     const updatedAt = new Date().toISOString();
-    ({ data, error } = await supabase
-      .from("weread_book_reviews")
-      .update({ review_text: text, created_at: updatedAt })
-      .eq("id", existing.id)
-      .select(REVIEW_COLUMNS)
-      .single());
+    ({ data, error } = await restUpdate(
+      "weread_book_reviews",
+      { review_text: text, created_at: updatedAt },
+      `id=eq.${encodeURIComponent(existing.id)}`,
+    ));
   } else {
     const createdAt = new Date().toISOString();
-    ({ data, error } = await supabase
-      .from("weread_book_reviews")
-      .insert({
+    ({ data, error } = await restInsert(
+      "weread_book_reviews",
+      {
         weread_book_id: bookId,
         review_text: text,
         created_at: createdAt,
-      })
-      .select(REVIEW_COLUMNS)
-      .single());
+      },
+      { returning: true, single: true },
+    ));
   }
 
   elements.reviewDialogSave.disabled = false;
@@ -861,7 +1013,10 @@ async function deleteActiveBookReview() {
   elements.reviewDialogDelete.disabled = true;
   setReviewDialogStatus("删除中…");
 
-  const { error } = await supabase.from("weread_book_reviews").delete().eq("id", review.id);
+  const { error } = await restDelete(
+    "weread_book_reviews",
+    `id=eq.${encodeURIComponent(review.id)}`,
+  );
 
   elements.reviewDialogDelete.disabled = false;
 
@@ -882,7 +1037,7 @@ function renderWereadBookCard(
   { showProgress = false, showHighlights = true, showFinishedMeta = false } = {},
 ) {
   const cover = book.cover_url
-    ? `<img src="${escapeHtml(book.cover_url)}" alt="" loading="lazy" decoding="async" />`
+    ? `<img src="${escapeHtml(book.cover_url)}" alt="" width="72" height="102" loading="lazy" decoding="async" fetchpriority="low" />`
     : `<span class="cover-fallback">${escapeHtml(book.title.slice(0, 4))}</span>`;
   const author = book.author || "未填写作者";
   const openUrl = `${WEREAD_OPEN_URL}${encodeURIComponent(book.weread_book_id)}`;
@@ -1080,14 +1235,27 @@ elements.reviewDialog.addEventListener("click", (event) => {
   }
 });
 
+function scheduleBookReviewsLoad() {
+  const run = () => {
+    loadBookReviewsFromSupabase().catch((error) => {
+      console.error(error);
+    });
+  };
+
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(run, { timeout: 3000 });
+  } else {
+    setTimeout(run, 1);
+  }
+}
+
 const cached = readCache();
 if (cached) {
   hydrateFromCache(cached);
 }
 
-Promise.all([
-  loadReadingStats(),
-  loadWereadBooks().then(() => loadBookReviewsFromSupabase()),
-]).catch((error) => {
-  console.error(error);
-});
+Promise.all([loadReadingStats(), loadWereadBooks()])
+  .then(() => scheduleBookReviewsLoad())
+  .catch((error) => {
+    console.error(error);
+  });
