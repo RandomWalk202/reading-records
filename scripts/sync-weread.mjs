@@ -8,7 +8,7 @@
  * Optional env:
  *   SUPABASE_URL (defaults to project URL in app.js)
  *   SUPABASE_PUBLISHABLE_KEY
- *   WEREAD_HIGHLIGHTS_PER_BOOK=5
+ *   WEREAD_HIGHLIGHTS_PER_BOOK=20  (0 = sync all highlights per book)
  */
 
 const WEREAD_GATEWAY = "https://i.weread.qq.com/api/agent/gateway";
@@ -16,7 +16,7 @@ const SKILL_VERSION = "1.0.3";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://jsbppxnrnzsxoqfworjj.supabase.co";
 const SUPABASE_KEY =
   process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_zLmaAY6WoAl8-fKy0WYMYw_RkvoueHC";
-const HIGHLIGHTS_PER_BOOK = Number(process.env.WEREAD_HIGHLIGHTS_PER_BOOK || 3);
+const HIGHLIGHTS_PER_BOOK = Number(process.env.WEREAD_HIGHLIGHTS_PER_BOOK ?? 0);
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -95,11 +95,14 @@ function chapterTitleForHighlight(chapters, chapterUid) {
 
 async function syncBookHighlights(bookId) {
   const data = await weread("/book/bookmarklist", { bookId });
-  const highlights = (data.updated || [])
+  const sorted = (data.updated || [])
     .filter((item) => item.markText?.trim())
-    .sort((a, b) => Number(b.createTime || 0) - Number(a.createTime || 0))
-    .slice(0, HIGHLIGHTS_PER_BOOK)
-    .map((item, index) => ({
+    .sort((a, b) => Number(b.createTime || 0) - Number(a.createTime || 0));
+
+  const capped =
+    HIGHLIGHTS_PER_BOOK > 0 ? sorted.slice(0, HIGHLIGHTS_PER_BOOK) : sorted;
+
+  const highlights = capped.map((item, index) => ({
       weread_book_id: bookId,
       bookmark_id: String(item.bookmarkId),
       mark_text: item.markText.trim(),

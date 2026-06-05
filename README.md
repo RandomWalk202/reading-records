@@ -30,14 +30,16 @@ export WEREAD_API_KEY=wrk-xxxxxxxx
 node scripts/sync-weread.mjs
 ```
 
-脚本会拉取书架（`/shelf/sync`）、阅读进度（`/book/getprogress`）、阅读统计（`/readdata/detail`，本周/本月/今年）和最近若干条划线（`/book/bookmarklist`，默认每本 3 条）。网页顶部展示阅读时长统计（可切换周期），书架按「在读 / 读完 / 想读」分组：在读显示进度，暂无划线的书归入想读。
+脚本会拉取书架（`/shelf/sync`）、阅读进度（`/book/getprogress`）、阅读统计（`/readdata/detail`，本周/本月/今年）和每本书的全部划线（`/book/bookmarklist`，默认同步全部）。网页卡片默认展示 2 条，点【查看全部划线】弹层会按书名拉取完整列表。书架按「在读 / 读完 / 想读」分组：在读显示进度，暂无划线的书归入想读。
 
-可调整每本书划线条数：
+若只想同步每本书最近若干条（减小数据库体积），可设置：
 
 ```bash
-export WEREAD_HIGHLIGHTS_PER_BOOK=8
+export WEREAD_HIGHLIGHTS_PER_BOOK=20
 node scripts/sync-weread.mjs
 ```
+
+设为 `0` 或不设置则同步全部划线。
 
 ### 每天自动同步（macOS）
 

@@ -12,12 +12,18 @@ function restOrder(column, { ascending = true, nullsFirst = true } = {}) {
   return `${column}.${dir}.${nulls}`;
 }
 
-async function restSelect(table, { select, order } = {}) {
+async function restSelect(table, { select, order, filter } = {}) {
   const params = new URLSearchParams({ select });
   const orders = order ? (Array.isArray(order) ? order : [order]) : [];
 
   for (const item of orders) {
     params.append("order", item);
+  }
+
+  if (filter) {
+    for (const [key, value] of Object.entries(filter)) {
+      params.set(key, value);
+    }
   }
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
@@ -125,6 +131,11 @@ const elements = {
   reviewDialogSavedText: document.querySelector("#reviewDialogSavedText"),
   reviewDialogEdit: document.querySelector("#reviewDialogEdit"),
   reviewDialogDelete: document.querySelector("#reviewDialogDelete"),
+  highlightsDialog: document.querySelector("#highlightsDialog"),
+  highlightsDialogTitle: document.querySelector("#highlightsDialogTitle"),
+  highlightsDialogAuthor: document.querySelector("#highlightsDialogAuthor"),
+  highlightsDialogList: document.querySelector("#highlightsDialogList"),
+  highlightsDialogClose: document.querySelector("#highlightsDialogClose"),
 };
 
 const STATS_MODE_LABELS = {
@@ -137,7 +148,7 @@ let readingStatsByMode = {};
 let activeStatsMode = "weekly";
 
 const WEREAD_OPEN_URL = "weread://reading?bId=";
-const WEREAD_HIGHLIGHTS_DISPLAY = 3;
+const WEREAD_HIGHLIGHTS_DISPLAY = 2;
 const LOADING_LABEL = "正在加载";
 const CACHE_KEY = "reading-records-cache-v4";
 const CACHE_LEGACY_KEY = "reading-records-cache-v3";
@@ -703,24 +714,124 @@ function resolveShelfForSearch(matches) {
   return activeShelfTab;
 }
 
-function renderWereadHighlights(highlights) {
-  const visible = highlights.slice(0, WEREAD_HIGHLIGHTS_DISPLAY);
+function renderHighlightItem(highlight) {
+  return `
+    <li class="highlight-item">
+      <p class="highlight-line is-clamped">
+        <span class="highlight-content">${escapeHtml(highlight.mark_text)}</span><button
+          type="button"
+          class="highlight-action"
+          data-action="toggle-highlight"
+          aria-expanded="false"
+          hidden
+        >展开</button>
+      </p>
+    </li>
+  `;
+}
 
-  if (!visible.length) {
+function renderHighlightDialogItem(highlight, index) {
+  return `
+    <article class="highlight-dialog-item">
+      <p class="highlight-dialog-index">划线 ${index + 1}</p>
+      <p class="highlight-dialog-text">${escapeHtml(highlight.mark_text)}</p>
+    </article>
+  `;
+}
+
+function renderWereadHighlights(highlights, bookId) {
+  if (!highlights.length) {
     return `<p class="weread-no-highlights">暂无划线</p>`;
   }
 
-  const items = visible
-    .map(
-      (highlight) => `
-        <li class="highlight-item">
-          <p class="highlight-text">${escapeHtml(highlight.mark_text)}</p>
-        </li>
-      `,
-    )
-    .join("");
+  const visible = highlights.slice(0, WEREAD_HIGHLIGHTS_DISPLAY);
+  const items = visible.map((highlight) => renderHighlightItem(highlight)).join("");
+  const viewAllButton =
+    highlights.length > WEREAD_HIGHLIGHTS_DISPLAY
+      ? `
+        <button
+          type="button"
+          class="highlight-view-all"
+          data-action="all-highlights"
+          data-book-id="${escapeHtml(bookId)}"
+        >
+          【查看全部划线】
+        </button>
+      `
+      : "";
 
-  return `<ul class="highlight-list">${items}</ul>`;
+  return `
+    <ul class="highlight-list">${items}</ul>
+    ${viewAllButton}
+  `;
+}
+
+function setupHighlightExpandToggles(root = elements.wereadBookGrid) {
+  for (const line of root.querySelectorAll(".highlight-line")) {
+    const toggle = line.querySelector("[data-action='toggle-highlight']");
+
+    if (!toggle) {
+      continue;
+    }
+
+    line.classList.add("is-clamped");
+    line.classList.remove("is-expanded");
+    toggle.textContent = "展开";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.hidden = true;
+
+    requestAnimationFrame(() => {
+      if (line.scrollHeight > line.clientHeight + 1) {
+        toggle.hidden = false;
+        return;
+      }
+
+      line.classList.remove("is-clamped");
+    });
+  }
+}
+
+async function openHighlightsDialog(bookId) {
+  const book = findWereadBook(bookId);
+  if (!book) {
+    return;
+  }
+
+  elements.highlightsDialogTitle.textContent = book.title;
+  elements.highlightsDialogAuthor.textContent = book.author || "未填写作者";
+  elements.highlightsDialogList.innerHTML = `<p class="highlights-dialog-loading">加载中…</p>`;
+  elements.highlightsDialog.showModal();
+
+  const { data, error } = await restSelect("weread_highlights", {
+    select: "mark_text,sort_order,chapter_title",
+    filter: { weread_book_id: `eq.${bookId}` },
+    order: restOrder("sort_order", { ascending: true }),
+  });
+
+  if (error) {
+    elements.highlightsDialogList.innerHTML = `<p class="highlights-dialog-loading">加载失败：${escapeHtml(error.message)}</p>`;
+    return;
+  }
+
+  const highlights = data || [];
+  if (!highlights.length) {
+    elements.highlightsDialogList.innerHTML = `<p class="highlights-dialog-loading">暂无划线</p>`;
+    return;
+  }
+
+  book.highlights = highlights;
+  book.hasHighlights = true;
+  writeCache();
+
+  elements.highlightsDialogList.innerHTML = highlights
+    .map((highlight, index) => renderHighlightDialogItem(highlight, index))
+    .join("");
+}
+
+function closeHighlightsDialog() {
+  if (elements.highlightsDialog.open) {
+    elements.highlightsDialog.close();
+  }
 }
 
 function formatShelfDate(isoTime) {
@@ -1043,7 +1154,9 @@ function renderWereadBookCard(
   const openUrl = `${WEREAD_OPEN_URL}${encodeURIComponent(book.weread_book_id)}`;
   const progressBlock = showProgress ? renderReadingProgress(book) : "";
   const finishedMetaBlock = showFinishedMeta ? renderFinishedMeta(book) : "";
-  const highlightsBlock = showHighlights ? renderWereadHighlights(book.highlights) : "";
+  const highlightsBlock = showHighlights
+    ? renderWereadHighlights(book.highlights, book.weread_book_id)
+    : "";
   const reviewLabel = hasBookReview(book.weread_book_id) ? "查看读后感" : "写读后感";
 
   return `
@@ -1174,6 +1287,8 @@ function renderWereadBooks() {
           </div>
         </div>
       `;
+
+  setupHighlightExpandToggles();
 }
 
 for (const tab of elements.shelfTabs) {
@@ -1183,12 +1298,45 @@ for (const tab of elements.shelfTabs) {
 elements.wereadSearchInput.addEventListener("input", renderWereadBooks);
 
 elements.wereadBookGrid.addEventListener("click", (event) => {
+  const toggleButton = event.target.closest("[data-action='toggle-highlight']");
+  if (toggleButton) {
+    const line = toggleButton.closest(".highlight-line");
+    if (!line) {
+      return;
+    }
+
+    const expanded = line.classList.toggle("is-expanded");
+    line.classList.toggle("is-clamped", !expanded);
+    toggleButton.textContent = expanded ? "收起" : "展开";
+    toggleButton.setAttribute("aria-expanded", String(expanded));
+    return;
+  }
+
+  const allHighlightsButton = event.target.closest("[data-action='all-highlights']");
+  if (allHighlightsButton) {
+    openHighlightsDialog(allHighlightsButton.dataset.bookId);
+    return;
+  }
+
   const coverButton = event.target.closest("[data-action='review']");
   if (!coverButton) {
     return;
   }
 
   openReviewDialog(coverButton.dataset.bookId);
+});
+
+elements.highlightsDialogClose.addEventListener("click", closeHighlightsDialog);
+
+elements.highlightsDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeHighlightsDialog();
+});
+
+elements.highlightsDialog.addEventListener("click", (event) => {
+  if (event.target === elements.highlightsDialog) {
+    closeHighlightsDialog();
+  }
 });
 
 elements.reviewForm.addEventListener("submit", (event) => {

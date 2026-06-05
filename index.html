@@ -160,6 +160,26 @@
       </form>
     </dialog>
 
+    <dialog class="review-dialog highlights-dialog" id="highlightsDialog" aria-labelledby="highlightsDialogTitle">
+      <div class="review-dialog-form highlights-dialog-form">
+        <header class="review-dialog-header">
+          <div>
+            <h2 class="review-dialog-title" id="highlightsDialogTitle"></h2>
+            <p class="review-dialog-author" id="highlightsDialogAuthor"></p>
+          </div>
+          <button
+            class="review-dialog-close"
+            type="button"
+            id="highlightsDialogClose"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </header>
+        <div class="highlights-dialog-list" id="highlightsDialogList"></div>
+      </div>
+    </dialog>
+
     <script type="module" src="./app.js"></script>
   </body>
 </html>
