@@ -79,6 +79,26 @@ NODE_BIN=/你电脑上/node的完整路径
 
 （conda 用户可先 `conda install nodejs`，或只用 Homebrew 安装 Node。）
 
+### 云端自动同步（GitHub Actions，不依赖本机在线）
+
+适合电脑不常联网、人在外地的场景：由 GitHub 服务器每天自动跑同步，也可用手机手动触发。
+
+**一次性配置：**
+
+1. 打开仓库网页：Settings → Secrets and variables → Actions → New repository secret
+2. 名称填 `WEREAD_API_KEY`，值填你的 `wrk-...` 密钥（与本地 `.env` 相同）
+3. 把 `.github/workflows/sync-weread.yml` 合并进 `main` 后生效
+
+**用手机 GitHub App 手动同步：**
+
+1. 打开 **reading-records** 仓库
+2. 点底部 **Actions**（操作）
+3. 左侧选 **Sync WeRead**
+4. 点 **Run workflow** → 再点绿色 **Run workflow**
+5. 等约 30 秒出现绿色 ✓ 后，刷新阅读记录网页
+
+默认每天 **北京时间 10:00** 自动同步一次（无需操作）。
+
 ## 后端
 
 - Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`、`weread_book_reviews`（读后感，仅弹窗展示）

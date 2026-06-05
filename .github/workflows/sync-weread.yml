@@ -1,0 +1,23 @@
+name: Sync WeRead
+
+on:
+  schedule:
+    # 每天北京时间 10:00（UTC 02:00）
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Sync shelf, highlights, and reading stats
+        env:
+          WEREAD_API_KEY: ${{ secrets.WEREAD_API_KEY }}
+        run: node scripts/sync-weread.mjs
