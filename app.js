@@ -116,6 +116,7 @@ const elements = {
   statsCompare: document.querySelector("#statsCompare"),
   statsDailyChartSection: document.querySelector("#statsDailyChartSection"),
   statsDailyChartBars: document.querySelector("#statsDailyChartBars"),
+  statsChartTooltip: document.querySelector("#statsChartTooltip"),
   reviewDialog: document.querySelector("#reviewDialog"),
   reviewForm: document.querySelector("#reviewForm"),
   reviewDialogTitle: document.querySelector("#reviewDialogTitle"),
@@ -294,21 +295,46 @@ function buildChartBuckets(payload, mode) {
   return [];
 }
 
-function formatChartTooltip(bucket, mode) {
-  const date = new Date(bucket.timestamp);
-  const duration = formatShortDuration(bucket.seconds);
-  const readDayNote =
-    bucket.seconds >= MIN_READ_DAY_SECONDS ? "（有效阅读日）" : "";
+function formatChartDuration(seconds) {
+  const total = Math.max(0, Number(seconds || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
 
-  if (mode === "annually") {
-    return `${date.getFullYear()}年${date.getMonth() + 1}月：${duration}${readDayNote}`;
+  if (hours > 0) {
+    return `${hours}小时${minutes}分钟`;
   }
 
-  if (mode === "weekly") {
-    return `${bucket.label}：${duration}${readDayNote}`;
+  if (minutes > 0) {
+    return `${minutes}分钟`;
   }
 
-  return `${date.getMonth() + 1}月${date.getDate()}日：${duration}${readDayNote}`;
+  if (total > 0) {
+    return "不足 1 分钟";
+  }
+
+  return "0分钟";
+}
+
+let activeChartBarWrap = null;
+
+function hideStatsChartTooltip() {
+  activeChartBarWrap = null;
+  elements.statsChartTooltip.hidden = true;
+  elements.statsChartTooltip.classList.remove("is-visible");
+}
+
+function showStatsChartTooltip(barWrap) {
+  const chartRect = elements.statsDailyChartSection.getBoundingClientRect();
+  const barRect = barWrap.getBoundingClientRect();
+  elements.statsChartTooltip.textContent = formatChartDuration(barWrap.dataset.chartSeconds);
+
+  const centerX = barRect.left + barRect.width / 2 - chartRect.left;
+  const top = barRect.top - chartRect.top;
+
+  elements.statsChartTooltip.style.left = `${centerX}px`;
+  elements.statsChartTooltip.style.top = `${top}px`;
+  elements.statsChartTooltip.hidden = false;
+  elements.statsChartTooltip.classList.add("is-visible");
 }
 
 function renderChartLabel(bucket, mode) {
@@ -348,22 +374,29 @@ function renderDailyReadChart(payload, mode) {
     `${STATS_MODE_LABELS[mode]}阅读分布，有效阅读 ${readDayCount} ${readDayUnit}`,
   );
 
+  hideStatsChartTooltip();
+
   elements.statsDailyChartBars.innerHTML = buckets
     .map((bucket) => {
       const heightPercent =
         bucket.seconds > 0 ? Math.max(8, Math.round((bucket.seconds / maxSeconds) * 100)) : 0;
       const isReadDay = bucket.seconds >= MIN_READ_DAY_SECONDS;
-      const tooltip = formatChartTooltip(bucket, mode);
+      const duration = formatChartDuration(bucket.seconds);
       const labelMarkup = renderChartLabel(bucket, mode);
 
       return `
         <div class="stats-chart-col">
-          <div class="stats-chart-bar-wrap" title="${escapeHtml(tooltip)}">
+          <button
+            type="button"
+            class="stats-chart-bar-wrap"
+            data-chart-seconds="${bucket.seconds}"
+            aria-label="${escapeHtml(duration)}"
+          >
             <div
               class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
               style="height: ${heightPercent}%"
             ></div>
-          </div>
+          </button>
           ${labelMarkup}
         </div>
       `;
@@ -552,6 +585,31 @@ function setActiveStatsMode(mode) {
 for (const tab of elements.statsTabs) {
   tab.addEventListener("click", () => setActiveStatsMode(tab.dataset.mode));
 }
+
+elements.statsDailyChartBars.addEventListener("click", (event) => {
+  const barWrap = event.target.closest(".stats-chart-bar-wrap");
+  if (!barWrap) {
+    return;
+  }
+
+  event.stopPropagation();
+
+  if (barWrap === activeChartBarWrap) {
+    hideStatsChartTooltip();
+    return;
+  }
+
+  activeChartBarWrap = barWrap;
+  showStatsChartTooltip(barWrap);
+});
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest("#statsDailyChartSection")) {
+    return;
+  }
+
+  hideStatsChartTooltip();
+});
 
 function showWereadLoading() {
   elements.wereadEmptyState.innerHTML = `<p>${LOADING_LABEL}</p>`;
