@@ -60,6 +60,7 @@
           </div>
 
           <section class="stats-chart" id="statsDailyChartSection" hidden>
+            <p class="stats-chart-heading">阅读分布</p>
             <div
               class="stats-chart-bars"
               id="statsDailyChartBars"
@@ -68,6 +69,18 @@
             ></div>
             <div class="stats-chart-tooltip" id="statsChartTooltip" role="tooltip" hidden></div>
           </section>
+
+          <div class="stats-hour-collapse" id="statsHourChartSection" hidden>
+            <div class="stats-chart stats-hour-chart" id="statsHourChartInner">
+              <div
+                class="stats-chart-bars stats-chart-bars--hourly"
+                id="statsHourChartBars"
+                role="img"
+                aria-label="阅读时段分布"
+              ></div>
+              <div class="stats-chart-tooltip" id="statsHourChartTooltip" role="tooltip" hidden></div>
+            </div>
+          </div>
         </div>
       </section>
 

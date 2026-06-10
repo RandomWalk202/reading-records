@@ -1,0 +1,23 @@
+name: Record hourly reading
+
+on:
+  schedule:
+    # 每小时第 5 分钟（UTC）
+    - cron: "5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Record reading delta for this hour
+        env:
+          WEREAD_API_KEY: ${{ secrets.WEREAD_API_KEY }}
+        run: node scripts/record-reading-hour.mjs
