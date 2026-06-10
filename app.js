@@ -118,6 +118,8 @@ const elements = {
   statsDailyChartBars: document.querySelector("#statsDailyChartBars"),
   statsChartTooltip: document.querySelector("#statsChartTooltip"),
   statsHourChartSection: document.querySelector("#statsHourChartSection"),
+  statsHourChartHeading: document.querySelector("#statsHourChartHeading"),
+  statsHourChartEmpty: document.querySelector("#statsHourChartEmpty"),
   statsHourChartInner: document.querySelector("#statsHourChartInner"),
   statsHourChartBars: document.querySelector("#statsHourChartBars"),
   statsHourChartTooltip: document.querySelector("#statsHourChartTooltip"),
@@ -634,16 +636,26 @@ function renderHourReadChart(mode) {
   if (!hasDaySelection) {
     elements.statsHourChartSection.hidden = true;
     elements.statsHourChartBars.innerHTML = "";
+    if (elements.statsHourChartHeading) {
+      elements.statsHourChartHeading.textContent = "";
+    }
+    if (elements.statsHourChartEmpty) {
+      elements.statsHourChartEmpty.hidden = true;
+    }
     return;
   }
 
   const buckets = buildTrackedHourBucketsForSelection(selectedDistributionBucket);
   const ariaLabel = `${selectedDistributionBucket.label}阅读时段分布`;
+  const dayTotal = buckets.reduce((sum, bucket) => sum + bucket.seconds, 0);
+  const headingSuffix = mode === "annually" ? "各小时累计" : "各小时分布";
 
   const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
   const peakSeconds = Math.max(...buckets.map((bucket) => bucket.seconds));
 
   elements.statsHourChartSection.hidden = false;
+  elements.statsHourChartHeading.textContent = `${selectedDistributionBucket.label} · ${headingSuffix}`;
+  elements.statsHourChartEmpty.hidden = dayTotal > 0;
 
   if (activeChartTooltip === elements.statsHourChartTooltip) {
     hideStatsChartTooltip();

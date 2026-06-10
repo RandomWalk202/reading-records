@@ -213,6 +213,20 @@ button:disabled {
   margin-top: 6px;
 }
 
+.stats-hour-collapse-heading {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stats-hour-collapse-empty {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
 .stats-hour-chart {
   margin-top: 0;
 }
@@ -283,6 +297,11 @@ button:disabled {
 
 .stats-chart-bars--hourly .stats-chart-bar {
   border-radius: 4px 4px 1px 1px;
+}
+
+.stats-chart-bars--hourly .stats-chart-bar.is-empty {
+  background: #ece4d8;
+  min-height: 2px;
 }
 
 .stats-chart-bars--hourly .stats-chart-tick {
