@@ -140,9 +140,6 @@ async function main() {
 
   let totalHighlights = 0;
   for (const [index, book] of books.entries()) {
-    const highlightCount = await syncBookHighlights(book.bookId);
-    totalHighlights += highlightCount;
-
     let progress = null;
     let finishTime = null;
     let readTimeSeconds = null;
@@ -190,6 +187,9 @@ async function main() {
         },
       ],
     });
+
+    const highlightCount = await syncBookHighlights(book.bookId);
+    totalHighlights += highlightCount;
 
     const progressLabel = progress === null ? "进度未知" : `${progress}%`;
     console.log(
