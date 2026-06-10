@@ -118,8 +118,6 @@ const elements = {
   statsDailyChartBars: document.querySelector("#statsDailyChartBars"),
   statsChartTooltip: document.querySelector("#statsChartTooltip"),
   statsHourChartSection: document.querySelector("#statsHourChartSection"),
-  statsHourChartHeading: document.querySelector("#statsHourChartHeading"),
-  statsHourChartEmpty: document.querySelector("#statsHourChartEmpty"),
   statsHourChartInner: document.querySelector("#statsHourChartInner"),
   statsHourChartBars: document.querySelector("#statsHourChartBars"),
   statsHourChartTooltip: document.querySelector("#statsHourChartTooltip"),
@@ -499,14 +497,21 @@ function buildTrackedHourBucketsForSelection(selection) {
 }
 
 function updateDailyChartSelection() {
-  const wraps = elements.statsDailyChartBars.querySelectorAll(".stats-chart-bar-wrap");
-  for (const wrap of wraps) {
-    const timestamp = Number(wrap.dataset.chartTimestamp);
+  const cols = elements.statsDailyChartBars.querySelectorAll(".stats-chart-col-btn");
+  for (const col of cols) {
+    const timestamp = Number(col.dataset.chartTimestamp);
     const isSelected =
       selectedDistributionBucket?.mode === activeStatsMode &&
       selectedDistributionBucket?.timestamp === timestamp;
-    wrap.classList.toggle("is-selected", isSelected);
+    col.classList.toggle("is-selected", isSelected);
+    col.setAttribute("aria-pressed", String(isSelected));
   }
+}
+
+function revealHourChartSection() {
+  elements.statsHourChartSection.hidden = false;
+  elements.statsHourChartSection.removeAttribute("hidden");
+  elements.statsHourChartSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function formatChartDuration(seconds) {
@@ -606,24 +611,24 @@ function renderDailyReadChart(payload, mode) {
         selectedDistributionBucket?.timestamp === bucket.timestamp;
 
       return `
-        <div class="stats-chart-col">
-          <button
-            type="button"
-            class="stats-chart-bar-wrap${isSelected ? " is-selected" : ""}"
-            data-chart-seconds="${bucket.seconds}"
-            data-chart-timestamp="${bucket.timestamp}"
-            data-chart-day-label="${escapeHtml(dayLabel)}"
-            data-chart-label="${escapeHtml(`${dayLabel} ${duration}`)}"
-            aria-label="${escapeHtml(`${dayLabel} ${duration}`)}"
-            aria-pressed="${isSelected}"
-          >
-            <div
+        <button
+          type="button"
+          class="stats-chart-col stats-chart-col-btn${isSelected ? " is-selected" : ""}"
+          data-chart-seconds="${bucket.seconds}"
+          data-chart-timestamp="${bucket.timestamp}"
+          data-chart-day-label="${escapeHtml(dayLabel)}"
+          data-chart-label="${escapeHtml(`${dayLabel} ${duration}`)}"
+          aria-label="${escapeHtml(`${dayLabel} ${duration}`)}"
+          aria-pressed="${isSelected}"
+        >
+          <span class="stats-chart-bar-wrap">
+            <span
               class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
               style="height: ${heightPercent}%"
-            ></div>
-          </button>
+            ></span>
+          </span>
           ${labelMarkup}
-        </div>
+        </button>
       `;
     })
     .join("");
@@ -636,26 +641,16 @@ function renderHourReadChart(mode) {
   if (!hasDaySelection) {
     elements.statsHourChartSection.hidden = true;
     elements.statsHourChartBars.innerHTML = "";
-    if (elements.statsHourChartHeading) {
-      elements.statsHourChartHeading.textContent = "";
-    }
-    if (elements.statsHourChartEmpty) {
-      elements.statsHourChartEmpty.hidden = true;
-    }
     return;
   }
 
   const buckets = buildTrackedHourBucketsForSelection(selectedDistributionBucket);
   const ariaLabel = `${selectedDistributionBucket.label}阅读时段分布`;
-  const dayTotal = buckets.reduce((sum, bucket) => sum + bucket.seconds, 0);
-  const headingSuffix = mode === "annually" ? "各小时累计" : "各小时分布";
 
   const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
   const peakSeconds = Math.max(...buckets.map((bucket) => bucket.seconds));
 
-  elements.statsHourChartSection.hidden = false;
-  elements.statsHourChartHeading.textContent = `${selectedDistributionBucket.label} · ${headingSuffix}`;
-  elements.statsHourChartEmpty.hidden = dayTotal > 0;
+  revealHourChartSection();
 
   if (activeChartTooltip === elements.statsHourChartTooltip) {
     hideStatsChartTooltip();
@@ -937,21 +932,21 @@ function bindStatsChartSection(section, bars, tooltip) {
   });
 }
 
-elements.statsDailyChartBars.addEventListener("click", (event) => {
-  const barWrap = event.target.closest(".stats-chart-bar-wrap");
-  if (!barWrap) {
+function handleDistributionChartActivate(event) {
+  const col = event.target.closest(".stats-chart-col-btn");
+  if (!col) {
     return;
   }
 
   event.stopPropagation();
 
-  const timestamp = Number(barWrap.dataset.chartTimestamp);
-  const label = barWrap.dataset.chartDayLabel || "";
+  const timestamp = Number(col.dataset.chartTimestamp);
+  const label = col.dataset.chartDayLabel || "";
   const isSameSelection =
     selectedDistributionBucket?.mode === activeStatsMode &&
     selectedDistributionBucket?.timestamp === timestamp;
 
-  if (isSameSelection && activeChartBarWrap === barWrap) {
+  if (isSameSelection && activeChartBarWrap === col) {
     selectedDistributionBucket = null;
     hideStatsChartTooltip();
     renderHourReadChart(activeStatsMode);
@@ -965,15 +960,17 @@ elements.statsDailyChartBars.addEventListener("click", (event) => {
     mode: activeStatsMode,
   };
 
-  activeChartBarWrap = barWrap;
+  activeChartBarWrap = col;
   showStatsChartTooltip(
     elements.statsDailyChartSection,
     elements.statsChartTooltip,
-    barWrap,
+    col,
   );
   updateDailyChartSelection();
   renderHourReadChart(activeStatsMode);
-});
+}
+
+elements.statsDailyChartBars.addEventListener("click", handleDistributionChartActivate);
 
 bindStatsChartSection(
   elements.statsHourChartInner,
