@@ -7,11 +7,15 @@ const REPO = "reading-records";
 const BRANCH = "main";
 
 const HOURLY_CRON = "5 * * * *";
-const DAILY_SYNC_CRON = "10 2 * * *";
+const SYNC_CRONS = new Set([
+  "0 0 * * *", // Beijing 08:00
+  "0 4 * * *", // Beijing 12:00
+  "0 13 * * *", // Beijing 21:00
+]);
 
 const WORKFLOWS = {
   hourly: "record-reading-hour.yml",
-  dailySync: "sync-weread.yml",
+  sync: "sync-weread.yml",
 } as const;
 
 type WorkflowInputs = Record<string, string | boolean | number>;
@@ -54,9 +58,9 @@ export default {
       return;
     }
 
-    if (event.cron === DAILY_SYNC_CRON) {
+    if (SYNC_CRONS.has(event.cron)) {
       ctx.waitUntil(
-        dispatchWorkflow(WORKFLOWS.dailySync, env.GITHUB_TOKEN, {
+        dispatchWorkflow(WORKFLOWS.sync, env.GITHUB_TOKEN, {
           skip_hourly: "true",
         }),
       );

@@ -124,8 +124,8 @@ npm run deploy
 
 当前 Worker 定时：
 
-- 每小时第 5 分钟触发 `Record hourly reading`
-- 每天北京时间 **10:10** 触发 `Sync WeRead`，并传入 `skip_hourly=true`，避免每日全量同步重复记录小时阅读
+- **每小时 `:05`（北京时间）**：触发 `Record hourly reading`（记录本小时阅读增量）
+- **每天 08:00 / 12:00 / 21:00（北京时间）**：触发 `Sync WeRead`，并传入 `skip_hourly=true`，避免全量同步重复记录小时阅读
 
 查看实时日志：
 
