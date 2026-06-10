@@ -79,25 +79,59 @@ NODE_BIN=/你电脑上/node的完整路径
 
 （conda 用户可先 `conda install nodejs`，或只用 Homebrew 安装 Node。）
 
-### 云端自动同步（GitHub Actions，不依赖本机在线）
+### 云端自动同步（Cloudflare + GitHub Actions）
 
-适合电脑不常联网、人在外地的场景：由 GitHub 服务器每天自动跑同步，也可用手机手动触发。
+适合电脑不常联网、人在外地的场景：由 **Cloudflare Workers Cron** 按时触发，**GitHub Actions** 在云端执行同步脚本。
 
-**一次性配置：**
+**GitHub 一次性配置：**
 
 1. 打开仓库网页：Settings → Secrets and variables → Actions → New repository secret
 2. 名称填 `WEREAD_API_KEY`，值填你的 `wrk-...` 密钥（与本地 `.env` 相同）
-3. 把 `.github/workflows/sync-weread.yml` 合并进 `main` 后生效
 
 **用手机 GitHub App 手动同步：**
 
 1. 打开 **reading-records** 仓库
 2. 点底部 **Actions**（操作）
-3. 左侧选 **Sync WeRead**
+3. 左侧选 **Sync WeRead** 或 **Record hourly reading**
 4. 点 **Run workflow** → 再点绿色 **Run workflow**
 5. 等约 30 秒出现绿色 ✓ 后，刷新阅读记录网页
 
-默认每天 **北京时间 10:00** 自动同步一次（无需操作）。
+### Cloudflare Workers Cron（自动定时）
+
+项目已包含 Worker 配置：`workers/reading-records-cron/`。workflow 不再使用 GitHub `schedule`，定时全部由 Cloudflare 触发。
+
+**一次性准备：**
+
+1. 创建 GitHub fine-grained personal access token：
+   - Repository access：只选 `RandomWalk202/reading-records`
+   - Repository permissions：`Actions` 设为 `Read and write`
+2. 登录 Cloudflare Wrangler 并设置 secret：
+
+```bash
+cd workers/reading-records-cron
+npm install
+npx wrangler login
+npx wrangler secret put GITHUB_TOKEN
+```
+
+`GITHUB_TOKEN` 填上一步创建的 GitHub token。
+
+**部署 Worker：**
+
+```bash
+npm run deploy
+```
+
+当前 Worker 定时：
+
+- 每小时第 5 分钟触发 `Record hourly reading`
+- 每天北京时间 **10:10** 触发 `Sync WeRead`，并传入 `skip_hourly=true`，避免每日全量同步重复记录小时阅读
+
+查看实时日志：
+
+```bash
+npm run tail
+```
 
 ## 后端
 

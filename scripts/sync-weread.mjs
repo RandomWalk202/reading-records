@@ -233,12 +233,14 @@ async function syncReadingStats() {
   }
   console.log("Reading stats synced.");
 
-  if (overallTotalReadSeconds !== null) {
+  if (overallTotalReadSeconds !== null && process.env.SKIP_HOURLY_READING !== "1") {
     await recordHourlyReading({
       totalReadSeconds: overallTotalReadSeconds,
       supabaseRequest,
       log: console.log,
     });
+  } else if (overallTotalReadSeconds !== null) {
+    console.log("Hourly reading attribution skipped for this sync.");
   }
 }
 

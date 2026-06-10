@@ -1,0 +1,16 @@
+{
+  "name": "reading-records-cron",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260610.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.86.0"
+  }
+}

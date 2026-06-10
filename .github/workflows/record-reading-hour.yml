@@ -1,4 +1,4 @@
-# Manual-only: scheduled hourly runs live in sync-weread.yml (record-hourly job).
+# Triggered by Cloudflare Workers Cron or manual Run workflow.
 name: Record hourly reading
 
 on:
