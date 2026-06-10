@@ -670,9 +670,7 @@ function renderHourReadChart(mode) {
         bucket.seconds > 0 ? Math.max(8, Math.round((bucket.seconds / maxSeconds) * 100)) : 0;
       const isPeak = bucket.seconds > 0 && bucket.seconds === peakSeconds;
       const duration = formatChartDuration(bucket.seconds);
-      const tickClass = bucket.label
-        ? "stats-chart-label stats-chart-tick"
-        : "stats-chart-label stats-chart-tick is-spacer";
+      const tickClass = bucket.label ? "stats-chart-tick" : "stats-chart-tick is-spacer";
 
       return `
         <div class="stats-chart-col">
