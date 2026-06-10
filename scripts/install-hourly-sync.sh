@@ -13,7 +13,7 @@ source "$ROOT/scripts/lib/common.sh"
 
 usage() {
   echo "Usage: $0 [install|uninstall|status]"
-  echo "  install   — record reading duration every hour at :05 (local time)"
+  echo "  install   — record reading duration every hour on the hour (local time)"
   echo "  uninstall — remove scheduled job"
   echo "  status    — show whether the job is loaded"
 }
@@ -97,7 +97,7 @@ write_plist() {
   <key>StartCalendarInterval</key>
   <dict>
     <key>Minute</key>
-    <integer>5</integer>
+    <integer>0</integer>
   </dict>
   <key>StandardOutPath</key>
   <string>${SUPPORT_DIR}/logs/launchd-hourly.out.log</string>
@@ -116,7 +116,7 @@ case "$cmd" in
     write_plist
     launchctl bootout "gui/$(id -u)/${LABEL}" 2>/dev/null || true
     launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST"
-    echo "Installed. Records reading every hour at :05."
+    echo "Installed. Records reading every hour at :00 (local time)."
     echo "Plist: $PLIST_DEST"
     echo "Runner: $RUNNER_SCRIPT"
     echo "Logs: $SUPPORT_DIR/logs/record-reading-hour.log"

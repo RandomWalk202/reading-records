@@ -26,17 +26,10 @@ export function getShanghaiHour(date = new Date()) {
   return Number(pickPart(shanghaiParts(date), "hour"));
 }
 
-function enumerateShanghaiHourStarts(fromDate, toDate) {
-  const hourStarts = [];
-  let cursorMs = new Date(getShanghaiHourStart(fromDate)).getTime();
-  const endMs = new Date(getShanghaiHourStart(toDate)).getTime();
-
-  while (cursorMs <= endMs) {
-    hourStarts.push(new Date(cursorMs).toISOString());
-    cursorMs += HOUR_MS;
-  }
-
-  return hourStarts;
+/** Hour bucket that just ended when sync runs (e.g. 11:00 sync → 10:00–11:00). */
+export function getPreviousShanghaiHourStart(date = new Date()) {
+  const currentHourStartMs = new Date(getShanghaiHourStart(date)).getTime();
+  return getShanghaiHourStart(new Date(currentHourStartMs - HOUR_MS));
 }
 
 function distributeDelta(lastSyncedAt, now, delta) {
@@ -44,9 +37,19 @@ function distributeDelta(lastSyncedAt, now, delta) {
     return [];
   }
 
-  const hourStarts = enumerateShanghaiHourStarts(new Date(lastSyncedAt), now);
+  const endHourStart = getPreviousShanghaiHourStart(now);
+  const endHourStartMs = new Date(endHourStart).getTime();
+  const firstHourStartMs = new Date(getShanghaiHourStart(new Date(lastSyncedAt))).getTime();
+
+  const hourStarts = [];
+  let cursorMs = firstHourStartMs;
+  while (cursorMs <= endHourStartMs) {
+    hourStarts.push(getShanghaiHourStart(new Date(cursorMs)));
+    cursorMs += HOUR_MS;
+  }
+
   if (!hourStarts.length) {
-    return [{ hourStart: new Date(getShanghaiHourStart(now)).toISOString(), seconds: delta }];
+    hourStarts.push(endHourStart);
   }
 
   const perHour = Math.floor(delta / hourStarts.length);
@@ -133,7 +136,8 @@ export async function recordHourlyReading({
   await insertSnapshot(supabaseRequest, syncedAt, total);
 
   if (delta > 0) {
-    log(`Hourly reading: +${delta}s across ${allocations.length} hour bucket(s).`);
+    const bucketLabels = allocations.map(({ hourStart }) => hourStart).join(", ");
+    log(`Hourly reading: +${delta}s → ${allocations.length} bucket(s): ${bucketLabels}`);
   } else {
     log(`Hourly reading: no change (${total}s total).`);
   }

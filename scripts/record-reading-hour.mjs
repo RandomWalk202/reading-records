@@ -5,7 +5,8 @@
  *   export WEREAD_API_KEY=wrk-...
  *   node scripts/record-reading-hour.mjs
  *
- * Schedule hourly via GitHub Actions or scripts/install-hourly-sync.sh (macOS).
+ * Schedule on each hour boundary via GitHub Actions or scripts/install-hourly-sync.sh (macOS).
+ * A run at 11:00 attributes the delta to the 10:00–11:00 bucket (Beijing time).
  */
 
 import { recordHourlyReading } from "./lib/record-hourly-reading.mjs";
