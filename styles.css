@@ -279,8 +279,9 @@ button:disabled {
 
 .stats-chart-bars--monthly .stats-chart-bar-wrap {
   grid-row: 1;
+  align-self: stretch;
   align-items: flex-end;
-  height: auto;
+  height: 100%;
   min-height: 0;
   max-height: none;
   flex: none;
