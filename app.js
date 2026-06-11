@@ -117,10 +117,6 @@ const elements = {
   statsDailyChartSection: document.querySelector("#statsDailyChartSection"),
   statsDailyChartBars: document.querySelector("#statsDailyChartBars"),
   statsChartTooltip: document.querySelector("#statsChartTooltip"),
-  statsHourChartSection: document.querySelector("#statsHourChartSection"),
-  statsHourChartInner: document.querySelector("#statsHourChartInner"),
-  statsHourChartBars: document.querySelector("#statsHourChartBars"),
-  statsHourChartTooltip: document.querySelector("#statsHourChartTooltip"),
   reviewDialog: document.querySelector("#reviewDialog"),
   reviewForm: document.querySelector("#reviewForm"),
   reviewDialogTitle: document.querySelector("#reviewDialogTitle"),
@@ -150,14 +146,12 @@ const STATS_MODE_LABELS = {
 };
 
 let readingStatsByMode = {};
-let hourlyReadingRows = [];
 let activeStatsMode = "weekly";
-let selectedDistributionBucket = null;
 
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 2;
 const LOADING_LABEL = "正在加载";
-const CACHE_KEY = "reading-records-cache-v6";
+const CACHE_KEY = "reading-records-cache-v7";
 const SHANGHAI_TZ = "Asia/Shanghai";
 const CACHE_LEGACY_KEY = "reading-records-cache-v3";
 const REVIEWS_STORAGE_KEY = "reading-records.book-reviews-v1";
@@ -168,9 +162,6 @@ const MIN_READ_DAY_SECONDS = 60;
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const DAY_MS = 86400000;
 const MONTHLY_TICK_INTERVAL = 5;
-const HOURLY_BUCKET_COUNT = 24;
-const HOURLY_TICK_INTERVAL = 3;
-const PREFER_TIME_START_HOUR = 6;
 const BOOK_COLUMNS =
   "weread_book_id,title,author,cover_url,finish_reading,progress,finish_time,read_time_seconds,read_update_time";
 const HIGHLIGHT_COLUMNS = "weread_book_id,mark_text,sort_order";
@@ -319,21 +310,6 @@ function pickShanghaiPart(parts, type) {
   return parts.find((part) => part.type === type)?.value ?? "";
 }
 
-function getShanghaiHour(date = new Date()) {
-  const parts = shanghaiFormatParts(date, { hour: "2-digit", hour12: false });
-  return Number(pickShanghaiPart(parts, "hour"));
-}
-
-function getShanghaiDayKey(date = new Date()) {
-  const parts = shanghaiFormatParts(date);
-  return `${pickShanghaiPart(parts, "year")}-${pickShanghaiPart(parts, "month")}-${pickShanghaiPart(parts, "day")}`;
-}
-
-function getShanghaiMonthKey(date = new Date()) {
-  const parts = shanghaiFormatParts(date);
-  return `${pickShanghaiPart(parts, "year")}-${pickShanghaiPart(parts, "month")}`;
-}
-
 function formatDistributionBucketLabel(timestampMs, mode) {
   if (mode === "weekly") {
     return new Intl.DateTimeFormat("zh-CN", {
@@ -358,160 +334,6 @@ function formatDistributionBucketLabel(timestampMs, mode) {
   }
 
   return "";
-}
-
-function createEmptyHourBuckets() {
-  return Array.from({ length: HOURLY_BUCKET_COUNT }, (_, hour) => {
-    const endHour = (hour + 1) % HOURLY_BUCKET_COUNT;
-    return {
-      hour,
-      seconds: 0,
-      label: hour % HOURLY_TICK_INTERVAL === 0 ? String(hour) : "",
-      rangeLabel: `${hour}点–${endHour}点`,
-    };
-  });
-}
-
-function getPeriodStartIso(mode) {
-  const parts = shanghaiFormatParts(new Date());
-  const year = pickShanghaiPart(parts, "year");
-  const month = pickShanghaiPart(parts, "month");
-  const day = Number(pickShanghaiPart(parts, "day"));
-  const weekdayLabel = new Intl.DateTimeFormat("en-US", {
-    timeZone: SHANGHAI_TZ,
-    weekday: "short",
-  }).format(new Date());
-  const weekdayMap = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-  const weekday = weekdayMap[weekdayLabel] ?? 0;
-  const pad = (value) => String(value).padStart(2, "0");
-  const anchor = new Date(`${year}-${month}-${pad(day)}T12:00:00+08:00`);
-
-  if (mode === "weekly") {
-    anchor.setDate(anchor.getDate() - weekday);
-  } else if (mode === "monthly") {
-    anchor.setDate(1);
-  } else if (mode === "annually") {
-    anchor.setMonth(0, 1);
-  }
-
-  return `${anchor.getFullYear()}-${pad(anchor.getMonth() + 1)}-${pad(anchor.getDate())}T00:00:00+08:00`;
-}
-
-function getHourlyQueryStartIso() {
-  const parts = shanghaiFormatParts(new Date());
-  const year = pickShanghaiPart(parts, "year");
-  const month = pickShanghaiPart(parts, "month");
-  const day = Number(pickShanghaiPart(parts, "day"));
-  const pad = (value) => String(value).padStart(2, "0");
-  const anchor = new Date(`${year}-${month}-${pad(day)}T12:00:00+08:00`);
-  anchor.setDate(anchor.getDate() - 400);
-  return `${anchor.getFullYear()}-${pad(anchor.getMonth() + 1)}-${pad(anchor.getDate())}T00:00:00+08:00`;
-}
-
-function preferTimeIndexForHour(hour) {
-  return (hour - PREFER_TIME_START_HOUR + HOURLY_BUCKET_COUNT) % HOURLY_BUCKET_COUNT;
-}
-
-function buildHourChartBuckets(preferTime) {
-  if (!Array.isArray(preferTime) || preferTime.length !== HOURLY_BUCKET_COUNT) {
-    return [];
-  }
-
-  return Array.from({ length: HOURLY_BUCKET_COUNT }, (_, hour) => {
-    const seconds = Math.max(0, Number(preferTime[preferTimeIndexForHour(hour)]) || 0);
-    const endHour = (hour + 1) % HOURLY_BUCKET_COUNT;
-    const rangeLabel = `${hour}点–${endHour}点`;
-
-    return {
-      hour,
-      seconds,
-      label: hour % HOURLY_TICK_INTERVAL === 0 ? String(hour) : "",
-      rangeLabel,
-    };
-  });
-}
-
-function resolvePreferTime(mode) {
-  const payload = readingStatsByMode[mode];
-  if (payload?.preferTime?.length === HOURLY_BUCKET_COUNT) {
-    return {
-      preferTime: payload.preferTime,
-      preferTimeWord: payload.preferTimeWord,
-      sourceLabel: STATS_MODE_LABELS[mode] || mode,
-      isFallback: false,
-    };
-  }
-
-  const overall = readingStatsByMode.overall;
-  if (overall?.preferTime?.length === HOURLY_BUCKET_COUNT) {
-    return {
-      preferTime: overall.preferTime,
-      preferTimeWord: overall.preferTimeWord,
-      sourceLabel: "累计",
-      isFallback: mode !== "overall",
-    };
-  }
-
-  return null;
-}
-
-function buildTrackedHourBuckets(mode) {
-  const periodStartMs = new Date(getPeriodStartIso(mode)).getTime();
-  const buckets = createEmptyHourBuckets();
-
-  for (const row of hourlyReadingRows) {
-    const rowMs = new Date(row.hour_start).getTime();
-    if (rowMs < periodStartMs) {
-      continue;
-    }
-
-    const hour = getShanghaiHour(new Date(row.hour_start));
-    buckets[hour].seconds += Math.max(0, Number(row.read_seconds || 0));
-  }
-
-  return buckets;
-}
-
-function buildTrackedHourBucketsForSelection(selection) {
-  const buckets = createEmptyHourBuckets();
-  const { timestamp, mode } = selection;
-  const dayKey = getShanghaiDayKey(new Date(timestamp));
-  const monthKey = getShanghaiMonthKey(new Date(timestamp));
-
-  for (const row of hourlyReadingRows) {
-    const rowDate = new Date(row.hour_start);
-
-    if (mode === "annually") {
-      if (getShanghaiMonthKey(rowDate) !== monthKey) {
-        continue;
-      }
-    } else if (getShanghaiDayKey(rowDate) !== dayKey) {
-      continue;
-    }
-
-    const hour = getShanghaiHour(rowDate);
-    buckets[hour].seconds += Math.max(0, Number(row.read_seconds || 0));
-  }
-
-  return buckets;
-}
-
-function updateDailyChartSelection() {
-  const cols = elements.statsDailyChartBars.querySelectorAll(".stats-chart-col-btn");
-  for (const col of cols) {
-    const timestamp = Number(col.dataset.chartTimestamp);
-    const isSelected =
-      selectedDistributionBucket?.mode === activeStatsMode &&
-      selectedDistributionBucket?.timestamp === timestamp;
-    col.classList.toggle("is-selected", isSelected);
-    col.setAttribute("aria-pressed", String(isSelected));
-  }
-}
-
-function revealHourChartSection() {
-  elements.statsHourChartSection.hidden = false;
-  elements.statsHourChartSection.removeAttribute("hidden");
-  elements.statsHourChartSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function formatChartDuration(seconds) {
@@ -542,8 +364,6 @@ function hideStatsChartTooltip() {
   activeChartTooltip = null;
   elements.statsChartTooltip.hidden = true;
   elements.statsChartTooltip.classList.remove("is-visible");
-  elements.statsHourChartTooltip.hidden = true;
-  elements.statsHourChartTooltip.classList.remove("is-visible");
 }
 
 function showStatsChartTooltip(section, tooltip, barWrap) {
@@ -606,71 +426,6 @@ function renderDailyReadChart(payload, mode) {
       const duration = formatChartDuration(bucket.seconds);
       const dayLabel = formatDistributionBucketLabel(bucket.timestamp, mode);
       const labelMarkup = renderChartLabel(bucket, mode);
-      const isSelected =
-        selectedDistributionBucket?.mode === mode &&
-        selectedDistributionBucket?.timestamp === bucket.timestamp;
-
-      return `
-        <button
-          type="button"
-          class="stats-chart-col stats-chart-col-btn${isSelected ? " is-selected" : ""}"
-          data-chart-seconds="${bucket.seconds}"
-          data-chart-timestamp="${bucket.timestamp}"
-          data-chart-day-label="${escapeHtml(dayLabel)}"
-          data-chart-label="${escapeHtml(`${dayLabel} ${duration}`)}"
-          aria-label="${escapeHtml(`${dayLabel} ${duration}`)}"
-          aria-pressed="${isSelected}"
-        >
-          <span class="stats-chart-bar-wrap">
-            <span
-              class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
-              style="height: ${heightPercent}%"
-            ></span>
-          </span>
-          ${labelMarkup}
-        </button>
-      `;
-    })
-    .join("");
-}
-
-function renderHourReadChart(mode) {
-  const hasDaySelection =
-    selectedDistributionBucket && selectedDistributionBucket.mode === mode;
-
-  if (!hasDaySelection) {
-    elements.statsHourChartSection.hidden = true;
-    elements.statsHourChartBars.innerHTML = "";
-    return;
-  }
-
-  const buckets = buildTrackedHourBucketsForSelection(selectedDistributionBucket);
-  const ariaLabel = `${selectedDistributionBucket.label}阅读时段分布`;
-
-  const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
-  const peakSeconds = Math.max(...buckets.map((bucket) => bucket.seconds));
-
-  revealHourChartSection();
-
-  if (activeChartTooltip === elements.statsHourChartTooltip) {
-    hideStatsChartTooltip();
-  }
-
-  const peakBucket = buckets.find((bucket) => bucket.seconds === peakSeconds);
-  elements.statsHourChartBars.setAttribute(
-    "aria-label",
-    peakBucket?.seconds > 0
-      ? `${ariaLabel}，高峰时段 ${peakBucket.rangeLabel}`
-      : ariaLabel,
-  );
-
-  elements.statsHourChartBars.innerHTML = buckets
-    .map((bucket) => {
-      const heightPercent =
-        bucket.seconds > 0 ? Math.max(8, Math.round((bucket.seconds / maxSeconds) * 100)) : 0;
-      const isPeak = bucket.seconds > 0 && bucket.seconds === peakSeconds;
-      const duration = formatChartDuration(bucket.seconds);
-      const tickClass = bucket.label ? "stats-chart-tick" : "stats-chart-tick is-spacer";
 
       return `
         <div class="stats-chart-col">
@@ -678,15 +433,15 @@ function renderHourReadChart(mode) {
             type="button"
             class="stats-chart-bar-wrap"
             data-chart-seconds="${bucket.seconds}"
-            data-chart-label="${escapeHtml(`${bucket.rangeLabel} ${duration}`)}"
-            aria-label="${escapeHtml(`${bucket.rangeLabel} ${duration}`)}"
+            data-chart-label="${escapeHtml(`${dayLabel} ${duration}`)}"
+            aria-label="${escapeHtml(`${dayLabel} ${duration}`)}"
           >
-            <div
-              class="stats-chart-bar${isPeak ? " is-peak" : ""}${bucket.seconds > 0 ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
+            <span
+              class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
               style="height: ${heightPercent}%"
-            ></div>
+            ></span>
           </button>
-          <span class="${tickClass}">${escapeHtml(bucket.label)}</span>
+          ${labelMarkup}
         </div>
       `;
     })
@@ -712,8 +467,6 @@ function slimStatsRow(row) {
     compare: payload.compare,
     baseTime: payload.baseTime,
     readTimes: payload.readTimes,
-    preferTime: payload.preferTime,
-    preferTimeWord: payload.preferTimeWord,
     synced_at: row.synced_at,
   };
 }
@@ -752,7 +505,6 @@ function writeCache() {
       JSON.stringify({
         savedAt: Date.now(),
         stats: readingStatsByMode,
-        hourly: hourlyReadingRows,
         books: wereadBooks,
       }),
     );
@@ -768,14 +520,6 @@ function hydrateFromCache(cache) {
   if (cache.stats && Object.keys(cache.stats).length > 0) {
     readingStatsByMode = cache.stats;
     renderReadingStats();
-    hydrated = true;
-  }
-
-  if (cache.hourly?.length) {
-    hourlyReadingRows = cache.hourly;
-    if (Object.keys(readingStatsByMode).length > 0) {
-      renderHourReadChart(activeStatsMode);
-    }
     hydrated = true;
   }
 
@@ -817,7 +561,6 @@ function renderReadingStats() {
   const payload = readingStatsByMode[activeStatsMode];
   if (!payload) {
     elements.statsDailyChartSection.hidden = true;
-    elements.statsHourChartSection.hidden = true;
     elements.statsEmptyState.hidden = false;
     elements.statsBody.hidden = true;
     elements.statsSyncedAt.textContent = `${STATS_MODE_LABELS[activeStatsMode]}暂无数据`;
@@ -846,7 +589,6 @@ function renderReadingStats() {
   }
 
   renderDailyReadChart(payload, activeStatsMode);
-  renderHourReadChart(activeStatsMode);
 }
 
 async function loadReadingStats() {
@@ -874,30 +616,8 @@ async function loadReadingStats() {
   writeCache();
 }
 
-async function loadHourlyReading() {
-  const { data, error } = await restSelect("weread_hourly_reading", {
-    select: "hour_start,read_seconds",
-    order: restOrder("hour_start", { ascending: true }),
-    filter: { hour_start: `gte.${getHourlyQueryStartIso()}` },
-  });
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  hourlyReadingRows = data || [];
-
-  if (Object.keys(readingStatsByMode).length > 0) {
-    renderHourReadChart(activeStatsMode);
-  }
-
-  writeCache();
-}
-
 function setActiveStatsMode(mode) {
   activeStatsMode = mode;
-  selectedDistributionBucket = null;
   hideStatsChartTooltip();
   for (const tab of elements.statsTabs) {
     const isActive = tab.dataset.mode === mode;
@@ -930,57 +650,14 @@ function bindStatsChartSection(section, bars, tooltip) {
   });
 }
 
-function handleDistributionChartActivate(event) {
-  const col = event.target.closest(".stats-chart-col-btn");
-  if (!col) {
-    return;
-  }
-
-  event.stopPropagation();
-
-  const timestamp = Number(col.dataset.chartTimestamp);
-  const label = col.dataset.chartDayLabel || "";
-  const isSameSelection =
-    selectedDistributionBucket?.mode === activeStatsMode &&
-    selectedDistributionBucket?.timestamp === timestamp;
-
-  if (isSameSelection && activeChartBarWrap === col) {
-    selectedDistributionBucket = null;
-    hideStatsChartTooltip();
-    renderHourReadChart(activeStatsMode);
-    updateDailyChartSelection();
-    return;
-  }
-
-  selectedDistributionBucket = {
-    timestamp,
-    label,
-    mode: activeStatsMode,
-  };
-
-  activeChartBarWrap = col;
-  showStatsChartTooltip(
-    elements.statsDailyChartSection,
-    elements.statsChartTooltip,
-    col,
-  );
-  updateDailyChartSelection();
-  renderHourReadChart(activeStatsMode);
-}
-
-elements.statsDailyChartBars.addEventListener("click", handleDistributionChartActivate);
-
 bindStatsChartSection(
-  elements.statsHourChartInner,
-  elements.statsHourChartBars,
-  elements.statsHourChartTooltip,
+  elements.statsDailyChartSection,
+  elements.statsDailyChartBars,
+  elements.statsChartTooltip,
 );
 
 document.addEventListener("click", (event) => {
-  if (
-    event.target.closest("#statsDailyChartSection") ||
-    event.target.closest("#statsHourChartSection")
-  ) {
+  if (event.target.closest("#statsDailyChartSection")) {
     return;
   }
 
@@ -1836,7 +1513,7 @@ if (cached) {
   hydrateFromCache(cached);
 }
 
-Promise.all([loadReadingStats(), loadHourlyReading(), loadWereadBooks()])
+Promise.all([loadReadingStats(), loadWereadBooks()])
   .then(() => scheduleBookReviewsLoad())
   .catch((error) => {
     console.error(error);

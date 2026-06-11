@@ -6,27 +6,17 @@ const OWNER = "RandomWalk202";
 const REPO = "reading-records";
 const BRANCH = "main";
 
-const HOURLY_CRON = "5 * * * *";
 const SYNC_CRONS = new Set([
   "0 0 * * *", // Beijing 08:00
   "0 4 * * *", // Beijing 12:00
   "0 13 * * *", // Beijing 21:00
 ]);
 
-const WORKFLOWS = {
-  hourly: "record-reading-hour.yml",
-  sync: "sync-weread.yml",
-} as const;
+const SYNC_WORKFLOW = "sync-weread.yml";
 
-type WorkflowInputs = Record<string, string | boolean | number>;
-
-async function dispatchWorkflow(
-  workflow: string,
-  token: string,
-  inputs?: WorkflowInputs,
-) {
+async function dispatchWorkflow(token: string) {
   const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${workflow}/dispatches`,
+    `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${SYNC_WORKFLOW}/dispatches`,
     {
       method: "POST",
       headers: {
@@ -36,34 +26,22 @@ async function dispatchWorkflow(
         "Content-Type": "application/json",
         "User-Agent": "reading-records-cloudflare-cron",
       },
-      body: JSON.stringify({
-        ref: BRANCH,
-        ...(inputs ? { inputs } : {}),
-      }),
+      body: JSON.stringify({ ref: BRANCH }),
     },
   );
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Failed to dispatch ${workflow}: ${response.status} ${body}`);
+    throw new Error(`Failed to dispatch ${SYNC_WORKFLOW}: ${response.status} ${body}`);
   }
 
-  console.log(`Dispatched ${workflow}`);
+  console.log(`Dispatched ${SYNC_WORKFLOW}`);
 }
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    if (event.cron === HOURLY_CRON) {
-      ctx.waitUntil(dispatchWorkflow(WORKFLOWS.hourly, env.GITHUB_TOKEN));
-      return;
-    }
-
     if (SYNC_CRONS.has(event.cron)) {
-      ctx.waitUntil(
-        dispatchWorkflow(WORKFLOWS.sync, env.GITHUB_TOKEN, {
-          skip_hourly: "true",
-        }),
-      );
+      ctx.waitUntil(dispatchWorkflow(env.GITHUB_TOKEN));
       return;
     }
 

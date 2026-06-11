@@ -1,5 +1,3 @@
-import { recordHourlyReading } from "./lib/record-hourly-reading.mjs";
-
 /**
  * Sync WeRead shelf + highlights into Supabase.
  *
@@ -208,13 +206,9 @@ const READING_STAT_MODES = ["weekly", "monthly", "annually", "overall"];
 
 async function syncReadingStats() {
   console.log("Fetching reading stats...");
-  let overallTotalReadSeconds = null;
 
   for (const mode of READING_STAT_MODES) {
     const payload = await weread("/readdata/detail", { mode });
-    if (mode === "overall") {
-      overallTotalReadSeconds = Number(payload.totalReadTime || 0);
-    }
 
     await supabaseRequest("weread_reading_stats", {
       method: "POST",
@@ -232,16 +226,6 @@ async function syncReadingStats() {
     console.log(`  ${mode}: ${hours}h ${minutes}m, ${payload.readDays ?? 0} read days`);
   }
   console.log("Reading stats synced.");
-
-  if (overallTotalReadSeconds !== null && process.env.SKIP_HOURLY_READING !== "1") {
-    await recordHourlyReading({
-      totalReadSeconds: overallTotalReadSeconds,
-      supabaseRequest,
-      log: console.log,
-    });
-  } else if (overallTotalReadSeconds !== null) {
-    console.log("Hourly reading attribution skipped for this sync.");
-  }
 }
 
 main().catch((error) => {

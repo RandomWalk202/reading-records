@@ -92,7 +92,7 @@ NODE_BIN=/你电脑上/node的完整路径
 
 1. 打开 **reading-records** 仓库
 2. 点底部 **Actions**（操作）
-3. 左侧选 **Sync WeRead** 或 **Record hourly reading**
+3. 左侧选 **Sync WeRead**
 4. 点 **Run workflow** → 再点绿色 **Run workflow**
 5. 等约 30 秒出现绿色 ✓ 后，刷新阅读记录网页
 
@@ -122,10 +122,9 @@ npx wrangler secret put GITHUB_TOKEN
 npm run deploy
 ```
 
-当前 Worker 定时：
+当前 Worker 定时（北京时间）：
 
-- **每小时 `:05`（北京时间）**：触发 `Record hourly reading`（记录本小时阅读增量）
-- **每天 08:00 / 12:00 / 21:00（北京时间）**：触发 `Sync WeRead`，并传入 `skip_hourly=true`，避免全量同步重复记录小时阅读
+- **每天 08:00 / 12:00 / 21:00**：触发 `Sync WeRead` 全量同步
 
 查看实时日志：
 

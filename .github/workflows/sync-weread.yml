@@ -2,11 +2,6 @@ name: Sync WeRead
 
 on:
   workflow_dispatch:
-    inputs:
-      skip_hourly:
-        description: "Skip hourly reading attribution during full sync"
-        required: false
-        default: "false"
 
 permissions:
   contents: read
@@ -25,5 +20,4 @@ jobs:
       - name: Sync shelf, highlights, and reading stats
         env:
           WEREAD_API_KEY: ${{ secrets.WEREAD_API_KEY }}
-          SKIP_HOURLY_READING: ${{ inputs.skip_hourly == 'true' && '1' || '' }}
         run: node scripts/sync-weread.mjs
