@@ -433,7 +433,7 @@ function renderDailyReadChart(payload, mode) {
             type="button"
             class="stats-chart-bar-wrap"
             data-chart-seconds="${bucket.seconds}"
-            data-chart-label="${escapeHtml(`${dayLabel} ${duration}`)}"
+            data-chart-label="${escapeHtml(duration)}"
             aria-label="${escapeHtml(`${dayLabel} ${duration}`)}"
           >
             <span
