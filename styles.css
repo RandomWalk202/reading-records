@@ -269,27 +269,38 @@ button:disabled {
 }
 
 .stats-chart-bars--monthly .stats-chart-col {
-  justify-content: flex-end;
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 12px;
   gap: 4px;
+  align-content: end;
   min-height: 118px;
 }
 
 .stats-chart-bars--monthly .stats-chart-bar-wrap {
-  flex: 1;
+  grid-row: 1;
   align-items: flex-end;
   height: auto;
   min-height: 0;
+  max-height: none;
+  flex: none;
 }
 
 .stats-chart-bars--monthly .stats-chart-tick {
-  flex-shrink: 0;
+  grid-row: 2;
+  height: 12px;
+  min-height: 12px;
+  max-height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.58rem;
   line-height: 1;
+  width: 100%;
 }
 
 .stats-chart-bars--monthly .stats-chart-tick.is-spacer {
   visibility: hidden;
-  min-height: 0.85em;
 }
 
 .stats-chart-bars--monthly .stats-chart-bar {
