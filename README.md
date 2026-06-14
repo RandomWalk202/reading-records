@@ -30,7 +30,7 @@ export WEREAD_API_KEY=wrk-xxxxxxxx
 node scripts/sync-weread.mjs
 ```
 
-脚本会拉取书架（`/shelf/sync`）、阅读进度（`/book/getprogress`）、阅读统计（`/readdata/detail`，本周/本月/今年）和每本书的全部划线（`/book/bookmarklist`，默认同步全部）。网页卡片默认展示 2 条，点【查看全部划线】弹层会按书名拉取完整列表。书架按「在读 / 读完 / 想读」分组：在读显示进度，暂无划线的书归入想读。
+脚本会拉取书架（`/shelf/sync`）、阅读进度（`/book/getprogress`）、阅读统计（`/readdata/detail`，本周/本月/今年）和每本书的全部划线（`/book/bookmarklist`，默认同步全部）。同步时会删除微信读书书架里已不存在的书籍及其划线、读后感记录。网页卡片默认展示 2 条，点【查看全部划线】弹层会按书名拉取完整列表。书架按「在读 / 读完 / 想读」分组：在读显示进度，暂无划线的书归入想读。
 
 若只想同步每本书最近若干条（减小数据库体积），可设置：
 

@@ -126,13 +126,68 @@ async function syncBookHighlights(bookId) {
   return highlights.length;
 }
 
+async function listStoredBookIds() {
+  const rows = await supabaseRequest("weread_books", {
+    query: { select: "weread_book_id,title" },
+  });
+
+  return rows || [];
+}
+
+function postgrestInFilter(bookIds) {
+  return `in.(${bookIds.map((id) => `"${id}"`).join(",")})`;
+}
+
+async function deleteByBookIds(table, bookIds) {
+  if (!bookIds.length) {
+    return;
+  }
+
+  const CHUNK_SIZE = 50;
+  for (let index = 0; index < bookIds.length; index += CHUNK_SIZE) {
+    const chunk = bookIds.slice(index, index + CHUNK_SIZE);
+    await supabaseRequest(table, {
+      method: "DELETE",
+      query: { weread_book_id: postgrestInFilter(chunk) },
+    });
+  }
+}
+
+async function removeBooksNotOnShelf(shelfBookIds) {
+  const shelfSet = new Set(shelfBookIds.map(String));
+  const storedBooks = await listStoredBookIds();
+  const removedBooks = storedBooks.filter((book) => !shelfSet.has(String(book.weread_book_id)));
+
+  if (!removedBooks.length) {
+    console.log("No off-shelf books to remove.");
+    return 0;
+  }
+
+  const removedIds = removedBooks.map((book) => book.weread_book_id);
+  console.log(
+    `Removing ${removedBooks.length} book(s) no longer on WeRead shelf: ${removedBooks
+      .map((book) => book.title || book.weread_book_id)
+      .join(", ")}`,
+  );
+
+  await deleteByBookIds("weread_highlights", removedIds);
+  await deleteByBookIds("weread_book_reviews", removedIds);
+  await deleteByBookIds("weread_books", removedIds);
+
+  return removedBooks.length;
+}
+
 async function main() {
   console.log("Fetching WeRead shelf...");
   const shelf = await weread("/shelf/sync");
   const books = shelf.books || [];
+  const shelfBookIds = books.map((book) => String(book.bookId));
+
+  await removeBooksNotOnShelf(shelfBookIds);
 
   if (books.length === 0) {
     console.log("No books found on shelf.");
+    await syncReadingStats();
     return;
   }
 
