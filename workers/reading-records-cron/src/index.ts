@@ -8,7 +8,7 @@ const BRANCH = "main";
 
 const SYNC_CRONS = new Set([
   "0 0 * * *", // Beijing 08:00
-  "0 4 * * *", // Beijing 12:00
+  "0 6 * * *", // Beijing 14:00
   "0 13 * * *", // Beijing 21:00
 ]);
 
