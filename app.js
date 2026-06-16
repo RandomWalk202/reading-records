@@ -158,7 +158,7 @@ let challengeRow = null;
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 2;
 const LOADING_LABEL = "正在加载";
-const CACHE_KEY = "reading-records-cache-v8";
+const CACHE_KEY = "reading-records-cache-v9";
 const SHANGHAI_TZ = "Asia/Shanghai";
 const CACHE_LEGACY_KEY = "reading-records-cache-v3";
 const REVIEWS_STORAGE_KEY = "reading-records.book-reviews-v1";
@@ -236,6 +236,32 @@ function formatShortDuration(seconds) {
 
   if (total > 0) {
     return "不足 1 分钟";
+  }
+
+  return "未阅读";
+}
+
+function formatChallengeRemainingDuration(totalSeconds, targetSeconds) {
+  const targetHours = Math.floor(Math.max(0, targetSeconds) / 3600);
+  const targetMinutes = Math.floor((Math.max(0, targetSeconds) % 3600) / 60);
+  const readHours = Math.floor(Math.max(0, totalSeconds) / 3600);
+  const readMinutes = Math.floor((Math.max(0, totalSeconds) % 3600) / 60);
+
+  let remHours = targetHours - readHours;
+  let remMinutes = targetMinutes - readMinutes;
+  if (remMinutes < 0) {
+    remHours -= 1;
+    remMinutes += 60;
+  }
+  remHours = Math.max(0, remHours);
+  remMinutes = Math.max(0, remMinutes);
+
+  if (remHours > 0) {
+    return `${remHours} 小时 ${remMinutes} 分`;
+  }
+
+  if (remMinutes > 0) {
+    return `${remMinutes} 分钟`;
   }
 
   return "未阅读";
@@ -509,7 +535,6 @@ function renderChallenge() {
   const targetDays = Number(challengeRow.target_days || 0);
   const targetSeconds = Number(challengeRow.target_seconds || 0);
   const daysRemaining = Math.max(0, targetDays - readDays);
-  const secondsRemaining = Math.max(0, targetSeconds - totalSeconds);
   const daysPercent = targetDays > 0 ? Math.min(100, (readDays / targetDays) * 100) : 0;
   const timePercent = targetSeconds > 0 ? Math.min(100, (totalSeconds / targetSeconds) * 100) : 0;
 
@@ -521,7 +546,10 @@ function renderChallenge() {
 
   elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(totalSeconds)}`;
   elements.challengeTimeBar.style.width = `${timePercent}%`;
-  elements.challengeTimeRemaining.textContent = `还需阅读 ${formatShortDuration(secondsRemaining)}`;
+  elements.challengeTimeRemaining.textContent = `还需阅读 ${formatChallengeRemainingDuration(
+    totalSeconds,
+    targetSeconds,
+  )}`;
 }
 
 function slimChallengeRow(row) {
