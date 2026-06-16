@@ -188,6 +188,7 @@ async function main() {
   if (books.length === 0) {
     console.log("No books found on shelf.");
     await syncReadingStats();
+    await syncChallengeProgress();
     return;
   }
 
@@ -255,6 +256,100 @@ async function main() {
   console.log(`Done. ${books.length} books, ${totalHighlights} highlights.`);
 
   await syncReadingStats();
+  await syncChallengeProgress();
+}
+
+const CHALLENGE = {
+  id: "weread-30d-202606",
+  startDate: "2026-06-15",
+  endDate: "2026-07-14",
+  targetDays: 30,
+  targetSeconds: 30 * 3600,
+};
+
+function shanghaiDayStartSec(year, month, day) {
+  const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`;
+  return Math.floor(new Date(iso).getTime() / 1000);
+}
+
+function lookupDailyReadSeconds(readTimes, dayStartSec) {
+  const raw = readTimes?.[dayStartSec] ?? readTimes?.[String(dayStartSec)];
+  return Math.max(0, Number(raw) || 0);
+}
+
+function monthsOverlappingRange(startDate, endDate) {
+  const [startYear, startMonth] = startDate.split("-").map(Number);
+  const [endYear, endMonth] = endDate.split("-").map(Number);
+  const months = [];
+
+  let year = startYear;
+  let month = startMonth;
+
+  while (year < endYear || (year === endYear && month <= endMonth)) {
+    months.push({
+      year,
+      month,
+      baseTime: shanghaiDayStartSec(year, month, 1),
+    });
+
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+
+  return months;
+}
+
+async function syncChallengeProgress() {
+  const { id, startDate, endDate, targetDays, targetSeconds } = CHALLENGE;
+  console.log("Fetching challenge reading data...");
+
+  const dailyReadSeconds = {};
+
+  for (const { year, month, baseTime } of monthsOverlappingRange(startDate, endDate)) {
+    const payload = await weread("/readdata/detail", { mode: "monthly", baseTime });
+    const readTimes = payload.readTimes || {};
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      if (dateStr < startDate || dateStr > endDate) {
+        continue;
+      }
+
+      const seconds = lookupDailyReadSeconds(readTimes, shanghaiDayStartSec(year, month, day));
+      if (seconds > 0) {
+        dailyReadSeconds[dateStr] = seconds;
+      }
+    }
+  }
+
+  await supabaseRequest("weread_challenge", {
+    method: "POST",
+    query: { on_conflict: "id" },
+    body: [
+      {
+        id,
+        start_date: startDate,
+        end_date: endDate,
+        target_days: targetDays,
+        target_seconds: targetSeconds,
+        daily_read_seconds: dailyReadSeconds,
+        synced_at: new Date().toISOString(),
+      },
+    ],
+  });
+
+  const readDays = Object.values(dailyReadSeconds).filter((seconds) => seconds >= 60).length;
+  const totalSeconds = Object.values(dailyReadSeconds).reduce((sum, seconds) => sum + seconds, 0);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  console.log(
+    `  challenge: ${readDays}/${targetDays} days, ${hours}h ${minutes}m (${Object.keys(dailyReadSeconds).length} active days synced)`,
+  );
+  console.log("Challenge progress synced.");
 }
 
 const READING_STAT_MODES = ["weekly", "monthly", "annually", "overall"];

@@ -137,6 +137,16 @@ const elements = {
   highlightsDialogAuthor: document.querySelector("#highlightsDialogAuthor"),
   highlightsDialogList: document.querySelector("#highlightsDialogList"),
   highlightsDialogClose: document.querySelector("#highlightsDialogClose"),
+  challengeSection: document.querySelector("#challengeSection"),
+  challengePeriod: document.querySelector("#challengePeriod"),
+  challengeSyncedAt: document.querySelector("#challengeSyncedAt"),
+  challengeDaysValue: document.querySelector("#challengeDaysValue"),
+  challengeDaysBar: document.querySelector("#challengeDaysBar"),
+  challengeDaysRemaining: document.querySelector("#challengeDaysRemaining"),
+  challengeTimeValue: document.querySelector("#challengeTimeValue"),
+  challengeTimeBar: document.querySelector("#challengeTimeBar"),
+  challengeTimeRemaining: document.querySelector("#challengeTimeRemaining"),
+  challengeCalendar: document.querySelector("#challengeCalendar"),
 };
 
 const STATS_MODE_LABELS = {
@@ -147,11 +157,12 @@ const STATS_MODE_LABELS = {
 
 let readingStatsByMode = {};
 let activeStatsMode = "weekly";
+let challengeRow = null;
 
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 2;
 const LOADING_LABEL = "正在加载";
-const CACHE_KEY = "reading-records-cache-v7";
+const CACHE_KEY = "reading-records-cache-v8";
 const SHANGHAI_TZ = "Asia/Shanghai";
 const CACHE_LEGACY_KEY = "reading-records-cache-v3";
 const REVIEWS_STORAGE_KEY = "reading-records.book-reviews-v1";
@@ -458,6 +469,121 @@ function formatCompareRatio(compare) {
   return value > 0 ? `较上期 +${percent}%` : `较上期 -${percent}%`;
 }
 
+function formatChallengePeriod(startDate, endDate) {
+  const formatPart = (isoDate) => {
+    const [year, month, day] = isoDate.split("-").map(Number);
+    return `${year}.${month}.${day}`;
+  };
+
+  return `${formatPart(startDate)} – ${formatPart(endDate)}`;
+}
+
+function nextIsoDateShanghai(isoDate) {
+  const nextMs = new Date(`${isoDate}T00:00:00+08:00`).getTime() + DAY_MS;
+  const parts = shanghaiFormatParts(new Date(nextMs));
+  return `${pickShanghaiPart(parts, "year")}-${pickShanghaiPart(parts, "month")}-${pickShanghaiPart(parts, "day")}`;
+}
+
+function listChallengeDates(startDate, endDate) {
+  const dates = [];
+  let current = startDate;
+
+  while (current <= endDate) {
+    dates.push(current);
+    current = nextIsoDateShanghai(current);
+  }
+
+  return dates;
+}
+
+function summarizeChallenge(row) {
+  const daily = row.daily_read_seconds || {};
+  const dates = listChallengeDates(row.start_date, row.end_date);
+  let readDays = 0;
+  let totalSeconds = 0;
+
+  for (const date of dates) {
+    const seconds = Math.max(0, Number(daily[date] || 0));
+    totalSeconds += seconds;
+    if (seconds >= MIN_READ_DAY_SECONDS) {
+      readDays += 1;
+    }
+  }
+
+  return { readDays, totalSeconds, dates, daily };
+}
+
+function renderChallenge() {
+  if (!challengeRow) {
+    elements.challengeSection.hidden = true;
+    return;
+  }
+
+  const { readDays, totalSeconds, dates, daily } = summarizeChallenge(challengeRow);
+  const targetDays = Number(challengeRow.target_days || 0);
+  const targetSeconds = Number(challengeRow.target_seconds || 0);
+  const daysRemaining = Math.max(0, targetDays - readDays);
+  const secondsRemaining = Math.max(0, targetSeconds - totalSeconds);
+  const daysPercent = targetDays > 0 ? Math.min(100, (readDays / targetDays) * 100) : 0;
+  const timePercent = targetSeconds > 0 ? Math.min(100, (totalSeconds / targetSeconds) * 100) : 0;
+
+  elements.challengeSection.hidden = false;
+  elements.challengePeriod.textContent = formatChallengePeriod(
+    challengeRow.start_date,
+    challengeRow.end_date,
+  );
+  elements.challengeSyncedAt.textContent = challengeRow.synced_at
+    ? `更新于 ${new Date(challengeRow.synced_at).toLocaleString("zh-CN", { hour12: false })}`
+    : "";
+
+  elements.challengeDaysValue.textContent = `已阅读 ${readDays} 天`;
+  elements.challengeDaysBar.style.width = `${daysPercent}%`;
+  elements.challengeDaysRemaining.textContent = `还需阅读 ${daysRemaining} 天`;
+
+  elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(totalSeconds)}`;
+  elements.challengeTimeBar.style.width = `${timePercent}%`;
+  elements.challengeTimeRemaining.textContent = `还需阅读 ${formatShortDuration(secondsRemaining)}`;
+
+  elements.challengeCalendar.innerHTML = dates
+    .map((date) => {
+      const seconds = Math.max(0, Number(daily[date] || 0));
+      const isRead = seconds >= MIN_READ_DAY_SECONDS;
+      const dayLabel = date.split("-")[2];
+      const title = `${date} · ${isRead ? formatChartDuration(seconds) : "未达标"}`;
+
+      return `<span class="challenge-day${isRead ? " is-read" : ""}" title="${escapeHtml(title)}">${escapeHtml(dayLabel)}</span>`;
+    })
+    .join("");
+}
+
+function slimChallengeRow(row) {
+  return {
+    start_date: row.start_date,
+    end_date: row.end_date,
+    target_days: row.target_days,
+    target_seconds: row.target_seconds,
+    daily_read_seconds: row.daily_read_seconds,
+    synced_at: row.synced_at,
+  };
+}
+
+async function loadChallenge() {
+  const { data, error } = await restSelect("weread_challenge", {
+    select: "start_date,end_date,target_days,target_seconds,daily_read_seconds,synced_at",
+    filter: { id: "eq.weread-30d-202606" },
+  });
+
+  if (error) {
+    console.error(error);
+    elements.challengeSection.hidden = true;
+    return;
+  }
+
+  challengeRow = data?.[0] ? slimChallengeRow(data[0]) : null;
+  renderChallenge();
+  writeCache();
+}
+
 function slimStatsRow(row) {
   const payload = row.payload || {};
   return {
@@ -505,6 +631,7 @@ function writeCache() {
       JSON.stringify({
         savedAt: Date.now(),
         stats: readingStatsByMode,
+        challenge: challengeRow,
         books: wereadBooks,
       }),
     );
@@ -520,6 +647,12 @@ function hydrateFromCache(cache) {
   if (cache.stats && Object.keys(cache.stats).length > 0) {
     readingStatsByMode = cache.stats;
     renderReadingStats();
+    hydrated = true;
+  }
+
+  if (cache.challenge) {
+    challengeRow = cache.challenge;
+    renderChallenge();
     hydrated = true;
   }
 
@@ -1513,7 +1646,7 @@ if (cached) {
   hydrateFromCache(cached);
 }
 
-Promise.all([loadReadingStats(), loadWereadBooks()])
+Promise.all([loadReadingStats(), loadChallenge(), loadWereadBooks()])
   .then(() => scheduleBookReviewsLoad())
   .catch((error) => {
     console.error(error);

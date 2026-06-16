@@ -6,8 +6,8 @@
     <title>开卷纪</title>
     <link rel="dns-prefetch" href="https://jsbppxnrnzsxoqfworjj.supabase.co" />
     <link rel="preconnect" href="https://jsbppxnrnzsxoqfworjj.supabase.co" crossorigin />
-    <link rel="stylesheet" href="./styles.css?v=20250613-4" />
-    <link rel="modulepreload" href="./app.js?v=20250613-4" />
+    <link rel="stylesheet" href="./styles.css?v=20250615-1" />
+    <link rel="modulepreload" href="./app.js?v=20250615-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -69,6 +69,44 @@
             ></div>
             <div class="stats-chart-tooltip" id="statsChartTooltip" role="tooltip" hidden></div>
           </section>
+        </div>
+      </section>
+
+      <section class="panel challenge-section" id="challengeSection" hidden aria-labelledby="challengeHeading">
+        <div class="stats-header">
+          <div>
+            <h2 id="challengeHeading">30 天阅读挑战</h2>
+            <p class="stats-synced" id="challengePeriod">—</p>
+          </div>
+          <p class="stats-synced" id="challengeSyncedAt"></p>
+        </div>
+
+        <div class="challenge-body" id="challengeBody">
+          <div class="challenge-cards">
+            <article class="challenge-card">
+              <div class="challenge-card-head">
+                <p class="stats-card-label">阅读天数</p>
+                <p class="challenge-card-value" id="challengeDaysValue">—</p>
+              </div>
+              <div class="challenge-bar" aria-hidden="true">
+                <div class="challenge-bar-fill" id="challengeDaysBar"></div>
+              </div>
+              <p class="challenge-remaining" id="challengeDaysRemaining">—</p>
+            </article>
+            <article class="challenge-card">
+              <div class="challenge-card-head">
+                <p class="stats-card-label">阅读时长</p>
+                <p class="challenge-card-value" id="challengeTimeValue">—</p>
+              </div>
+              <div class="challenge-bar" aria-hidden="true">
+                <div class="challenge-bar-fill" id="challengeTimeBar"></div>
+              </div>
+              <p class="challenge-remaining" id="challengeTimeRemaining">—</p>
+            </article>
+          </div>
+
+          <div class="challenge-calendar" id="challengeCalendar" aria-label="挑战日历"></div>
+          <p class="challenge-note">数据来自微信读书同步；单日阅读满 1 分钟计为有效阅读天。</p>
         </div>
       </section>
 
@@ -182,6 +220,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20250613-4"></script>
+    <script type="module" src="./app.js?v=20250615-1"></script>
   </body>
 </html>

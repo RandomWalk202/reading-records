@@ -134,5 +134,5 @@ npm run tail
 
 ## 后端
 
-- Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`、`weread_book_reviews`（读后感，仅弹窗展示）
+- Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`、`weread_challenge`（30 天阅读挑战进度）、`weread_book_reviews`（读后感，仅弹窗展示）
 - 当前版本为了方便共享，允许公开读取、写入（同步脚本使用）
