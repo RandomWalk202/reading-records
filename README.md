@@ -135,4 +135,5 @@ npm run tail
 ## 后端
 
 - Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`、`weread_challenge`（30 天阅读挑战进度）、`weread_book_reviews`（读后感，仅弹窗展示）
+- 阅读挑战：`weread_challenge.baseline_through_date` 及之前的 `daily_read_seconds` 为手动基准，同步只更新该日期之后的每日阅读数据
 - 当前版本为了方便共享，允许公开读取、写入（同步脚本使用）

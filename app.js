@@ -113,7 +113,6 @@ const elements = {
   statsTotalTime: document.querySelector("#statsTotalTime"),
   statsReadDays: document.querySelector("#statsReadDays"),
   statsDayAverage: document.querySelector("#statsDayAverage"),
-  statsCompare: document.querySelector("#statsCompare"),
   statsDailyChartSection: document.querySelector("#statsDailyChartSection"),
   statsDailyChartBars: document.querySelector("#statsDailyChartBars"),
   statsChartTooltip: document.querySelector("#statsChartTooltip"),
@@ -138,15 +137,12 @@ const elements = {
   highlightsDialogList: document.querySelector("#highlightsDialogList"),
   highlightsDialogClose: document.querySelector("#highlightsDialogClose"),
   challengeSection: document.querySelector("#challengeSection"),
-  challengePeriod: document.querySelector("#challengePeriod"),
-  challengeSyncedAt: document.querySelector("#challengeSyncedAt"),
   challengeDaysValue: document.querySelector("#challengeDaysValue"),
   challengeDaysBar: document.querySelector("#challengeDaysBar"),
   challengeDaysRemaining: document.querySelector("#challengeDaysRemaining"),
   challengeTimeValue: document.querySelector("#challengeTimeValue"),
   challengeTimeBar: document.querySelector("#challengeTimeBar"),
   challengeTimeRemaining: document.querySelector("#challengeTimeRemaining"),
-  challengeCalendar: document.querySelector("#challengeCalendar"),
 };
 
 const STATS_MODE_LABELS = {
@@ -459,16 +455,6 @@ function renderDailyReadChart(payload, mode) {
     .join("");
 }
 
-function formatCompareRatio(compare) {
-  const value = Number(compare);
-  if (!Number.isFinite(value) || value === 0) {
-    return "与上期持平";
-  }
-
-  const percent = Math.round(Math.abs(value) * 100);
-  return value > 0 ? `较上期 +${percent}%` : `较上期 -${percent}%`;
-}
-
 function formatChallengePeriod(startDate, endDate) {
   const formatPart = (isoDate) => {
     const [year, month, day] = isoDate.split("-").map(Number);
@@ -510,7 +496,7 @@ function summarizeChallenge(row) {
     }
   }
 
-  return { readDays, totalSeconds, dates, daily };
+  return { readDays, totalSeconds };
 }
 
 function renderChallenge() {
@@ -519,7 +505,7 @@ function renderChallenge() {
     return;
   }
 
-  const { readDays, totalSeconds, dates, daily } = summarizeChallenge(challengeRow);
+  const { readDays, totalSeconds } = summarizeChallenge(challengeRow);
   const targetDays = Number(challengeRow.target_days || 0);
   const targetSeconds = Number(challengeRow.target_seconds || 0);
   const daysRemaining = Math.max(0, targetDays - readDays);
@@ -528,13 +514,6 @@ function renderChallenge() {
   const timePercent = targetSeconds > 0 ? Math.min(100, (totalSeconds / targetSeconds) * 100) : 0;
 
   elements.challengeSection.hidden = false;
-  elements.challengePeriod.textContent = formatChallengePeriod(
-    challengeRow.start_date,
-    challengeRow.end_date,
-  );
-  elements.challengeSyncedAt.textContent = challengeRow.synced_at
-    ? `更新于 ${new Date(challengeRow.synced_at).toLocaleString("zh-CN", { hour12: false })}`
-    : "";
 
   elements.challengeDaysValue.textContent = `已阅读 ${readDays} 天`;
   elements.challengeDaysBar.style.width = `${daysPercent}%`;
@@ -543,17 +522,6 @@ function renderChallenge() {
   elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(totalSeconds)}`;
   elements.challengeTimeBar.style.width = `${timePercent}%`;
   elements.challengeTimeRemaining.textContent = `还需阅读 ${formatShortDuration(secondsRemaining)}`;
-
-  elements.challengeCalendar.innerHTML = dates
-    .map((date) => {
-      const seconds = Math.max(0, Number(daily[date] || 0));
-      const isRead = seconds >= MIN_READ_DAY_SECONDS;
-      const dayLabel = date.split("-")[2];
-      const title = `${date} · ${isRead ? formatChartDuration(seconds) : "未达标"}`;
-
-      return `<span class="challenge-day${isRead ? " is-read" : ""}" title="${escapeHtml(title)}">${escapeHtml(dayLabel)}</span>`;
-    })
-    .join("");
 }
 
 function slimChallengeRow(row) {
@@ -590,7 +558,6 @@ function slimStatsRow(row) {
     totalReadTime: payload.totalReadTime,
     readDays: payload.readDays,
     dayAverageReadTime: payload.dayAverageReadTime,
-    compare: payload.compare,
     baseTime: payload.baseTime,
     readTimes: payload.readTimes,
     synced_at: row.synced_at,
@@ -709,17 +676,6 @@ function renderReadingStats() {
   elements.statsTotalTime.textContent = formatDurationSeconds(payload.totalReadTime);
   elements.statsReadDays.textContent = `${payload.readDays ?? 0} 天`;
   elements.statsDayAverage.textContent = formatDurationSeconds(payload.dayAverageReadTime);
-
-  if (payload.compare !== undefined && payload.compare !== null) {
-    elements.statsCompare.hidden = false;
-    elements.statsCompare.textContent = formatCompareRatio(payload.compare);
-    elements.statsCompare.classList.toggle("is-up", Number(payload.compare) > 0);
-    elements.statsCompare.classList.toggle("is-down", Number(payload.compare) < 0);
-  } else {
-    elements.statsCompare.hidden = true;
-    elements.statsCompare.textContent = "";
-    elements.statsCompare.classList.remove("is-up", "is-down");
-  }
 
   renderDailyReadChart(payload, activeStatsMode);
 }

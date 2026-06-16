@@ -265,7 +265,25 @@ const CHALLENGE = {
   endDate: "2026-07-14",
   targetDays: 30,
   targetSeconds: 30 * 3600,
+  // Frozen through this date (inclusive). Earlier days stay in daily_read_seconds;
+  // today and later are filled from WeRead on each sync.
+  baselineThroughDate: "2026-06-15",
 };
+
+async function fetchChallengeRow() {
+  const rows = await supabaseRequest("weread_challenge", {
+    query: {
+      select: "daily_read_seconds,baseline_through_date",
+      id: `eq.${CHALLENGE.id}`,
+    },
+  });
+
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+function isOnOrBeforeBaseline(dateStr, baselineThroughDate) {
+  return Boolean(baselineThroughDate) && dateStr <= baselineThroughDate;
+}
 
 function shanghaiDayStartSec(year, month, day) {
   const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`;
@@ -304,9 +322,20 @@ function monthsOverlappingRange(startDate, endDate) {
 
 async function syncChallengeProgress() {
   const { id, startDate, endDate, targetDays, targetSeconds } = CHALLENGE;
-  console.log("Fetching challenge reading data...");
+  const existing = await fetchChallengeRow();
+  const baselineThroughDate =
+    existing?.baseline_through_date ?? CHALLENGE.baselineThroughDate ?? null;
+  const incrementalOnly = Boolean(baselineThroughDate);
 
-  const dailyReadSeconds = {};
+  console.log(
+    incrementalOnly
+      ? `Fetching challenge data (baseline through ${baselineThroughDate}, incremental sync)...`
+      : "Fetching challenge reading data...",
+  );
+
+  const dailyReadSeconds = incrementalOnly
+    ? { ...(existing?.daily_read_seconds || {}) }
+    : {};
 
   for (const { year, month, baseTime } of monthsOverlappingRange(startDate, endDate)) {
     const payload = await weread("/readdata/detail", { mode: "monthly", baseTime });
@@ -319,10 +348,22 @@ async function syncChallengeProgress() {
         continue;
       }
 
+      if (isOnOrBeforeBaseline(dateStr, baselineThroughDate)) {
+        continue;
+      }
+
       const seconds = lookupDailyReadSeconds(readTimes, shanghaiDayStartSec(year, month, day));
       if (seconds > 0) {
         dailyReadSeconds[dateStr] = seconds;
+      } else {
+        delete dailyReadSeconds[dateStr];
       }
+    }
+  }
+
+  for (const dateStr of Object.keys(dailyReadSeconds)) {
+    if (dateStr < startDate || dateStr > endDate) {
+      delete dailyReadSeconds[dateStr];
     }
   }
 
@@ -336,6 +377,7 @@ async function syncChallengeProgress() {
         end_date: endDate,
         target_days: targetDays,
         target_seconds: targetSeconds,
+        baseline_through_date: baselineThroughDate,
         daily_read_seconds: dailyReadSeconds,
         synced_at: new Date().toISOString(),
       },
