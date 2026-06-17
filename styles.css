@@ -68,7 +68,7 @@ button:disabled {
 
 .challenge-cards {
   display: grid;
-  grid-template-columns: minmax(6.5rem, 0.38fr) minmax(0, 0.62fr);
+  grid-template-columns: minmax(0, 0.46fr) minmax(0, 0.54fr);
   gap: 12px;
   margin-bottom: 0;
 }
