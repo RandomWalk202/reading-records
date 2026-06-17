@@ -1036,7 +1036,7 @@ h3 {
   }
 
   .challenge-cards {
-    grid-template-columns: minmax(5.5rem, 0.32fr) minmax(0, 0.68fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
 
