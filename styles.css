@@ -68,7 +68,7 @@ button:disabled {
 
 .challenge-cards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(6.5rem, 0.38fr) minmax(0, 0.62fr);
   gap: 12px;
   margin-bottom: 0;
 }
@@ -94,7 +94,8 @@ button:disabled {
   font-size: 0.95rem;
   font-weight: 800;
   color: var(--accent);
-  word-break: break-word;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .challenge-bar {
@@ -116,6 +117,8 @@ button:disabled {
   margin: 10px 0 0;
   color: var(--muted);
   font-size: 0.82rem;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 .stats-header {
@@ -1033,6 +1036,7 @@ h3 {
   }
 
   .challenge-cards {
+    grid-template-columns: minmax(5.5rem, 0.32fr) minmax(0, 0.68fr);
     gap: 6px;
   }
 
@@ -1042,18 +1046,18 @@ h3 {
   }
 
   .challenge-card-head {
-    gap: 6px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     margin-bottom: 8px;
   }
 
   .challenge-card-value {
-    font-size: 0.82rem;
-    line-height: 1.3;
+    font-size: 0.8rem;
   }
 
   .challenge-remaining {
     margin-top: 8px;
-    font-size: 0.7rem;
-    line-height: 1.25;
+    font-size: 0.68rem;
   }
 }
