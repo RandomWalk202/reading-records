@@ -320,8 +320,10 @@ button:disabled {
 }
 
 .stats-chart-bars--monthly {
+  display: grid;
+  grid-template-columns: repeat(var(--monthly-day-count, 30), minmax(0, 1fr));
   align-items: stretch;
-  gap: 2px;
+  gap: 3px;
   padding: 14px 8px 8px;
 }
 
@@ -376,6 +378,9 @@ button:disabled {
 
 .stats-chart-bars--monthly .stats-chart-bar {
   border-radius: 4px 4px 1px 1px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .stats-chart-bar-wrap {
@@ -1037,6 +1042,16 @@ h3 {
     font-size: 0.68rem;
     margin-top: 4px;
     line-height: 1.25;
+  }
+
+  .stats-chart-bars--monthly {
+    gap: 4px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .stats-chart-bars--monthly .stats-chart-tick {
+    font-size: 0.5rem;
   }
 
   .challenge-cards {

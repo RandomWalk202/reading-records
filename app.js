@@ -437,6 +437,7 @@ function renderDailyReadChart(payload, mode) {
     elements.statsDailyChartSection.hidden = true;
     elements.statsDailyChartBars.innerHTML = "";
     elements.statsDailyChartBars.className = "stats-chart-bars";
+    elements.statsDailyChartBars.style.removeProperty("--monthly-day-count");
     return;
   }
 
@@ -446,6 +447,11 @@ function renderDailyReadChart(payload, mode) {
 
   elements.statsDailyChartSection.hidden = false;
   elements.statsDailyChartBars.className = `stats-chart-bars stats-chart-bars--${mode}`;
+  if (mode === "monthly") {
+    elements.statsDailyChartBars.style.setProperty("--monthly-day-count", String(buckets.length));
+  } else {
+    elements.statsDailyChartBars.style.removeProperty("--monthly-day-count");
+  }
   elements.statsDailyChartBars.setAttribute(
     "aria-label",
     `${STATS_MODE_LABELS[mode]}阅读分布，有效阅读 ${readDayCount} ${readDayUnit}`,
