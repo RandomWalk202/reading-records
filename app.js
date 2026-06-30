@@ -543,22 +543,24 @@ function renderChallenge() {
   const daysRemaining = Math.max(0, targetDays - readDays);
   const daysPercent = targetDays > 0 ? Math.min(100, (readDays / targetDays) * 100) : 0;
   const timePercent = targetSeconds > 0 ? Math.min(100, (totalSeconds / targetSeconds) * 100) : 0;
+  const daysCompleted = targetDays > 0 && readDays >= targetDays;
+  const timeCompleted = targetSeconds > 0 && totalSeconds >= targetSeconds;
 
   elements.challengeSection.hidden = false;
 
-  elements.challengeDaysValue.textContent = `已阅读 ${readDays} 天`;
+  elements.challengeDaysValue.textContent = `已阅读 ${daysCompleted ? targetDays : readDays} 天`;
   elements.challengeDaysBar.style.width = `${daysPercent}%`;
-  elements.challengeDaysRemaining.textContent =
-    targetDays > 0 && readDays >= targetDays
-      ? "已完成"
-      : `还需阅读 ${daysRemaining} 天`;
+  elements.challengeDaysRemaining.textContent = daysCompleted
+    ? "已完成"
+    : `还需阅读 ${daysRemaining} 天`;
 
-  elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(totalSeconds)}`;
+  elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(
+    timeCompleted ? targetSeconds : totalSeconds,
+  )}`;
   elements.challengeTimeBar.style.width = `${timePercent}%`;
-  elements.challengeTimeRemaining.textContent =
-    targetSeconds > 0 && totalSeconds >= targetSeconds
-      ? "已完成"
-      : `还需阅读 ${formatChallengeRemainingDuration(totalSeconds, targetSeconds)}`;
+  elements.challengeTimeRemaining.textContent = timeCompleted
+    ? "已完成"
+    : `还需阅读 ${formatChallengeRemainingDuration(totalSeconds, targetSeconds)}`;
 }
 
 function slimChallengeRow(row) {
