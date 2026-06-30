@@ -347,7 +347,7 @@ function formatMonthlyChartDateLabel(timestampMs) {
   const parts = shanghaiFormatParts(new Date(timestampMs));
   const month = Number(pickShanghaiPart(parts, "month"));
   const day = Number(pickShanghaiPart(parts, "day"));
-  return `${month}月${day}`;
+  return `${month}月${day}日`;
 }
 
 function formatDistributionBucketLabel(timestampMs, mode) {
