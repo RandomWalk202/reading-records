@@ -343,6 +343,13 @@ function pickShanghaiPart(parts, type) {
   return parts.find((part) => part.type === type)?.value ?? "";
 }
 
+function formatMonthlyChartDateLabel(timestampMs) {
+  const parts = shanghaiFormatParts(new Date(timestampMs));
+  const month = Number(pickShanghaiPart(parts, "month"));
+  const day = Number(pickShanghaiPart(parts, "day"));
+  return `${month}月${day}`;
+}
+
 function formatDistributionBucketLabel(timestampMs, mode) {
   if (mode === "weekly") {
     return new Intl.DateTimeFormat("zh-CN", {
@@ -464,6 +471,10 @@ function renderDailyReadChart(payload, mode) {
       const isReadDay = bucket.seconds >= MIN_READ_DAY_SECONDS;
       const duration = formatChartDuration(bucket.seconds);
       const dayLabel = formatDistributionBucketLabel(bucket.timestamp, mode);
+      const chartLabel =
+        mode === "monthly"
+          ? `${formatMonthlyChartDateLabel(bucket.timestamp)} ${duration}`
+          : duration;
       const labelMarkup = renderChartLabel(bucket, mode);
 
       return `
@@ -472,8 +483,8 @@ function renderDailyReadChart(payload, mode) {
             type="button"
             class="stats-chart-bar-wrap"
             data-chart-seconds="${bucket.seconds}"
-            data-chart-label="${escapeHtml(duration)}"
-            aria-label="${escapeHtml(`${dayLabel} ${duration}`)}"
+            data-chart-label="${escapeHtml(chartLabel)}"
+            aria-label="${escapeHtml(mode === "monthly" ? chartLabel : `${dayLabel} ${duration}`)}"
           >
             <span
               class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
