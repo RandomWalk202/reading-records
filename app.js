@@ -548,7 +548,10 @@ function renderChallenge() {
 
   elements.challengeDaysValue.textContent = `已阅读 ${readDays} 天`;
   elements.challengeDaysBar.style.width = `${daysPercent}%`;
-  elements.challengeDaysRemaining.textContent = `还需阅读 ${daysRemaining} 天`;
+  elements.challengeDaysRemaining.textContent =
+    targetDays > 0 && readDays >= targetDays
+      ? "已完成"
+      : `还需阅读 ${daysRemaining} 天`;
 
   elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(totalSeconds)}`;
   elements.challengeTimeBar.style.width = `${timePercent}%`;
