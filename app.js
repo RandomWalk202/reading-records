@@ -552,10 +552,10 @@ function renderChallenge() {
 
   elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(totalSeconds)}`;
   elements.challengeTimeBar.style.width = `${timePercent}%`;
-  elements.challengeTimeRemaining.textContent = `还需阅读 ${formatChallengeRemainingDuration(
-    totalSeconds,
-    targetSeconds,
-  )}`;
+  elements.challengeTimeRemaining.textContent =
+    targetSeconds > 0 && totalSeconds >= targetSeconds
+      ? "已完成"
+      : `还需阅读 ${formatChallengeRemainingDuration(totalSeconds, targetSeconds)}`;
 }
 
 function slimChallengeRow(row) {
