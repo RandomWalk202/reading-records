@@ -261,13 +261,13 @@ async function main() {
 
 const CHALLENGE = {
   id: "weread-30d-202606",
-  startDate: "2026-06-15",
-  endDate: "2026-07-14",
+  startDate: "2026-07-13",
+  endDate: "2026-08-11",
   targetDays: 30,
   targetSeconds: 30 * 3600,
   // Frozen through this date (inclusive). Earlier days stay in daily_read_seconds;
   // today and later are filled from WeRead on each sync.
-  baselineThroughDate: "2026-06-15",
+  baselineThroughDate: "2026-07-14",
 };
 
 async function fetchChallengeRow() {
