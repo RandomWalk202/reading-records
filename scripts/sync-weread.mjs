@@ -311,9 +311,8 @@ const CHALLENGE = {
   endDate: "2026-08-11",
   targetDays: 30,
   targetSeconds: 30 * 3600,
-  // Frozen through this date (inclusive). Earlier days stay in daily_read_seconds;
-  // today and later are filled from WeRead on each sync.
-  baselineThroughDate: "2026-07-14",
+  // No baseline freeze: each sync refreshes the full challenge window from WeRead.
+  baselineThroughDate: null,
 };
 
 async function fetchChallengeRow() {
