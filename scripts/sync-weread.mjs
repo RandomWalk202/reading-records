@@ -28,27 +28,73 @@ function requireEnv(name) {
 }
 
 const wereadApiKey = requireEnv("WEREAD_API_KEY");
+const WEREAD_MAX_ATTEMPTS = 4;
+const WEREAD_RETRY_BASE_MS = 800;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function weread(apiName, params = {}) {
-  const response = await fetch(WEREAD_GATEWAY, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${wereadApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      api_name: apiName,
-      skill_version: SKILL_VERSION,
-      ...params,
-    }),
-  });
+  let lastError;
 
-  const data = await response.json();
-  if (data.errcode && data.errcode !== 0) {
-    throw new Error(data.errmsg || `WeRead API error: ${apiName}`);
+  for (let attempt = 1; attempt <= WEREAD_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(WEREAD_GATEWAY, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${wereadApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_name: apiName,
+          skill_version: SKILL_VERSION,
+          ...params,
+        }),
+      });
+
+      const text = await response.text();
+      if (!text.trim()) {
+        throw new Error(
+          `WeRead API empty response: ${apiName} (HTTP ${response.status})`,
+        );
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (error) {
+        throw new Error(
+          `WeRead API invalid JSON: ${apiName} (HTTP ${response.status}): ${error.message}`,
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `WeRead API HTTP ${response.status}: ${apiName} ${data.errmsg || text.slice(0, 200)}`,
+        );
+      }
+
+      if (data.errcode && data.errcode !== 0) {
+        throw new Error(data.errmsg || `WeRead API error: ${apiName}`);
+      }
+
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= WEREAD_MAX_ATTEMPTS) {
+        break;
+      }
+
+      const waitMs = WEREAD_RETRY_BASE_MS * attempt;
+      console.warn(
+        `Retry ${attempt}/${WEREAD_MAX_ATTEMPTS - 1} for ${apiName} in ${waitMs}ms: ${error.message}`,
+      );
+      await sleep(waitMs);
+    }
   }
 
-  return data;
+  throw lastError;
 }
 
 async function supabaseRequest(path, { method = "GET", body, query } = {}) {
