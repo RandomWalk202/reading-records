@@ -98,7 +98,8 @@ NODE_BIN=/你电脑上/node的完整路径
 
 ### Cloudflare Workers Cron（自动定时）
 
-项目已包含 Worker 配置：`workers/reading-records-cron/`。workflow 不再使用 GitHub `schedule`，定时全部由 Cloudflare 触发。
+项目已包含 Worker 配置：`workers/reading-records-cron/`。  
+同时保留 GitHub Actions `schedule` 作为备份（北京时间 08:05 / 14:05 / 21:05），避免 Cloudflare 触发失败时整天不同步。
 
 **一次性准备：**
 
