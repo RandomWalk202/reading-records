@@ -437,29 +437,28 @@ button:disabled {
   margin-top: 10px;
 }
 
-.stats-hour-chart-toggle {
-  display: flex;
-  width: 100%;
+.stats-hour-chart.is-collapsed {
+  display: none;
+}
+
+.stats-chart-heading-toggle {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
+  margin: 0 0 10px;
   border: 0;
-  padding: 2px 0;
+  padding: 0;
   background: transparent;
   color: inherit;
   cursor: pointer;
   text-align: left;
 }
 
-.stats-hour-chart-toggle[hidden] {
-  display: none;
+.stats-chart-heading-toggle:disabled {
+  cursor: default;
 }
 
-.stats-hour-chart-toggle-label {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
+.stats-chart-heading-toggle .stats-chart-heading {
+  margin: 0;
 }
 
 .stats-hour-chart-body-head {
@@ -484,21 +483,8 @@ button:disabled {
   cursor: pointer;
 }
 
-.stats-hour-chart-chevron {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-right: 1.5px solid var(--muted);
-  border-bottom: 1.5px solid var(--muted);
-  transform: rotate(45deg);
-}
-
 .stats-hour-chart-body {
   margin-top: 0;
-}
-
-.stats-hour-chart.is-collapsed .stats-hour-chart-body {
-  display: none;
 }
 
 .stats-chart-bars--hourly {

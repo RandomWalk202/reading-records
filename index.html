@@ -12,8 +12,8 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260722-ice5" />
-    <link rel="modulepreload" href="./app.js?v=20260722-ice5" />
+    <link rel="stylesheet" href="./styles.css?v=20260722-ice6" />
+    <link rel="modulepreload" href="./app.js?v=20260722-ice6" />
   </head>
   <body>
     <main class="app-shell">
@@ -65,7 +65,17 @@
           </div>
 
           <section class="stats-chart" id="statsDailyChartSection" hidden>
-            <p class="stats-chart-heading">阅读分布</p>
+            <div class="stats-chart-heading-row">
+              <button
+                type="button"
+                class="stats-chart-heading-toggle"
+                id="statsHourChartToggle"
+                aria-expanded="false"
+                aria-controls="statsHourChartSection"
+              >
+                <span class="stats-chart-heading">阅读分布</span>
+              </button>
+            </div>
             <div
               class="stats-chart-bars"
               id="statsDailyChartBars"
@@ -76,16 +86,6 @@
           </section>
 
           <section class="stats-chart stats-hour-chart is-collapsed" id="statsHourChartSection" hidden>
-            <button
-              type="button"
-              class="stats-hour-chart-toggle is-collapsed-only"
-              id="statsHourChartToggle"
-              aria-expanded="false"
-              aria-controls="statsHourChartBody"
-            >
-              <span class="stats-hour-chart-toggle-label" id="statsHourChartToggleLabel">查看时段</span>
-              <span class="stats-hour-chart-chevron" aria-hidden="true"></span>
-            </button>
             <div class="stats-hour-chart-body" id="statsHourChartBody">
               <div class="stats-hour-chart-body-head">
                 <p class="stats-chart-heading" id="statsHourChartHeading">阅读时段</p>
@@ -247,6 +247,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260722-ice5"></script>
+    <script type="module" src="./app.js?v=20260722-ice6"></script>
   </body>
 </html>

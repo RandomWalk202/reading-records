@@ -465,7 +465,6 @@ function setHourChartExpanded(expanded) {
   elements.statsHourChartSection.classList.toggle("is-collapsed", !expanded);
   if (elements.statsHourChartToggle) {
     elements.statsHourChartToggle.setAttribute("aria-expanded", String(expanded));
-    elements.statsHourChartToggle.hidden = expanded;
   }
 
   if (!expanded) {
@@ -485,12 +484,18 @@ function renderTodayHourChart() {
     elements.statsHourChartSection.hidden = true;
     elements.statsHourChartBars.innerHTML = "";
     setHourChartExpanded(false);
+    if (elements.statsHourChartToggle) {
+      elements.statsHourChartToggle.disabled = true;
+    }
     return;
   }
 
   const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
 
   elements.statsHourChartSection.hidden = false;
+  if (elements.statsHourChartToggle) {
+    elements.statsHourChartToggle.disabled = false;
+  }
   if (elements.statsHourChartHeading) {
     elements.statsHourChartHeading.textContent = "阅读时段";
   }
@@ -524,6 +529,9 @@ function renderTodayHourChart() {
       `;
     })
     .join("");
+
+  const expanded = !elements.statsHourChartSection.classList.contains("is-collapsed");
+  setHourChartExpanded(expanded);
 }
 
 async function loadHourlyReading() {
@@ -959,7 +967,11 @@ if (elements.statsHourChartSection && elements.statsHourChartBars && elements.st
 if (elements.statsHourChartToggle && elements.statsHourChartSection) {
   elements.statsHourChartToggle.addEventListener("click", (event) => {
     event.stopPropagation();
-    setHourChartExpanded(true);
+    if (elements.statsHourChartToggle.disabled || elements.statsHourChartSection.hidden) {
+      return;
+    }
+    const expanded = elements.statsHourChartSection.classList.contains("is-collapsed");
+    setHourChartExpanded(expanded);
   });
 }
 
