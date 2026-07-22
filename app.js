@@ -119,6 +119,7 @@ const elements = {
   statsHourChartSection: document.querySelector("#statsHourChartSection"),
   statsHourChartHeading: document.querySelector("#statsHourChartHeading"),
   statsHourChartToggle: document.querySelector("#statsHourChartToggle"),
+  statsHourChartCollapse: document.querySelector("#statsHourChartCollapse"),
   statsHourChartBody: document.querySelector("#statsHourChartBody"),
   statsHourChartBars: document.querySelector("#statsHourChartBars"),
   statsHourChartTooltip: document.querySelector("#statsHourChartTooltip"),
@@ -464,6 +465,7 @@ function setHourChartExpanded(expanded) {
   elements.statsHourChartSection.classList.toggle("is-collapsed", !expanded);
   if (elements.statsHourChartToggle) {
     elements.statsHourChartToggle.setAttribute("aria-expanded", String(expanded));
+    elements.statsHourChartToggle.hidden = expanded;
   }
 
   if (!expanded) {
@@ -957,8 +959,14 @@ if (elements.statsHourChartSection && elements.statsHourChartBars && elements.st
 if (elements.statsHourChartToggle && elements.statsHourChartSection) {
   elements.statsHourChartToggle.addEventListener("click", (event) => {
     event.stopPropagation();
-    const expanded = elements.statsHourChartSection.classList.contains("is-collapsed");
-    setHourChartExpanded(expanded);
+    setHourChartExpanded(true);
+  });
+}
+
+if (elements.statsHourChartCollapse && elements.statsHourChartSection) {
+  elements.statsHourChartCollapse.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setHourChartExpanded(false);
   });
 }
 

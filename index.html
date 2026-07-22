@@ -12,8 +12,8 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260722-ice4" />
-    <link rel="modulepreload" href="./app.js?v=20260722-ice4" />
+    <link rel="stylesheet" href="./styles.css?v=20260722-ice5" />
+    <link rel="modulepreload" href="./app.js?v=20260722-ice5" />
   </head>
   <body>
     <main class="app-shell">
@@ -78,15 +78,26 @@
           <section class="stats-chart stats-hour-chart is-collapsed" id="statsHourChartSection" hidden>
             <button
               type="button"
-              class="stats-hour-chart-toggle"
+              class="stats-hour-chart-toggle is-collapsed-only"
               id="statsHourChartToggle"
               aria-expanded="false"
               aria-controls="statsHourChartBody"
             >
-              <span class="stats-chart-heading" id="statsHourChartHeading">阅读时段</span>
+              <span class="stats-hour-chart-toggle-label" id="statsHourChartToggleLabel">查看时段</span>
               <span class="stats-hour-chart-chevron" aria-hidden="true"></span>
             </button>
             <div class="stats-hour-chart-body" id="statsHourChartBody">
+              <div class="stats-hour-chart-body-head">
+                <p class="stats-chart-heading" id="statsHourChartHeading">阅读时段</p>
+                <button
+                  type="button"
+                  class="stats-hour-chart-collapse"
+                  id="statsHourChartCollapse"
+                  aria-label="收起阅读时段"
+                >
+                  收起
+                </button>
+              </div>
               <div
                 class="stats-chart-bars stats-chart-bars--hourly"
                 id="statsHourChartBars"
@@ -236,6 +247,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260722-ice4"></script>
+    <script type="module" src="./app.js?v=20260722-ice5"></script>
   </body>
 </html>
