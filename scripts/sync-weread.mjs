@@ -233,8 +233,9 @@ async function main() {
 
   if (books.length === 0) {
     console.log("No books found on shelf.");
-    await syncReadingStats();
+    const overallTotalSeconds = await syncReadingStats();
     await syncChallengeProgress();
+    await syncHourlyFromOverall(overallTotalSeconds);
     return;
   }
 
@@ -301,8 +302,9 @@ async function main() {
 
   console.log(`Done. ${books.length} books, ${totalHighlights} highlights.`);
 
-  await syncReadingStats();
+  const overallTotalSeconds = await syncReadingStats();
   await syncChallengeProgress();
+  await syncHourlyFromOverall(overallTotalSeconds);
 }
 
 const CHALLENGE = {
@@ -443,9 +445,14 @@ const READING_STAT_MODES = ["weekly", "monthly", "annually", "overall"];
 
 async function syncReadingStats() {
   console.log("Fetching reading stats...");
+  let overallTotalSeconds = 0;
 
   for (const mode of READING_STAT_MODES) {
     const payload = await weread("/readdata/detail", { mode });
+
+    if (mode === "overall") {
+      overallTotalSeconds = Math.max(0, Number(payload.totalReadTime || 0));
+    }
 
     await supabaseRequest("weread_reading_stats", {
       method: "POST",
@@ -463,6 +470,16 @@ async function syncReadingStats() {
     console.log(`  ${mode}: ${hours}h ${minutes}m, ${payload.readDays ?? 0} read days`);
   }
   console.log("Reading stats synced.");
+  return overallTotalSeconds;
+}
+
+async function syncHourlyFromOverall(overallTotalSeconds) {
+  const { recordHourlyReading } = await import("./lib/record-hourly-reading.mjs");
+  await recordHourlyReading({
+    totalReadSeconds: overallTotalSeconds,
+    supabaseRequest,
+    log: console.log,
+  });
 }
 
 main().catch((error) => {

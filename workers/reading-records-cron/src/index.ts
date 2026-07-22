@@ -6,17 +6,21 @@ const OWNER = "RandomWalk202";
 const REPO = "reading-records";
 const BRANCH = "main";
 
-const SYNC_CRONS = new Set([
-  "0 0 * * *", // Beijing 08:00
-  "0 6 * * *", // Beijing 14:00
-  "0 13 * * *", // Beijing 21:00
+const HOURLY_CRON = "5 * * * *";
+const FULL_SYNC_CRONS = new Set([
+  "10 0 * * *", // Beijing 08:10
+  "10 6 * * *", // Beijing 14:10
+  "10 13 * * *", // Beijing 21:10
 ]);
 
-const SYNC_WORKFLOW = "sync-weread.yml";
+const WORKFLOWS = {
+  hourly: "record-reading-hour.yml",
+  fullSync: "sync-weread.yml",
+} as const;
 
-async function dispatchWorkflow(token: string) {
+async function dispatchWorkflow(workflow: string, token: string) {
   const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${SYNC_WORKFLOW}/dispatches`,
+    `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${workflow}/dispatches`,
     {
       method: "POST",
       headers: {
@@ -32,16 +36,21 @@ async function dispatchWorkflow(token: string) {
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Failed to dispatch ${SYNC_WORKFLOW}: ${response.status} ${body}`);
+    throw new Error(`Failed to dispatch ${workflow}: ${response.status} ${body}`);
   }
 
-  console.log(`Dispatched ${SYNC_WORKFLOW}`);
+  console.log(`Dispatched ${workflow}`);
 }
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    if (SYNC_CRONS.has(event.cron)) {
-      ctx.waitUntil(dispatchWorkflow(env.GITHUB_TOKEN));
+    if (event.cron === HOURLY_CRON) {
+      ctx.waitUntil(dispatchWorkflow(WORKFLOWS.hourly, env.GITHUB_TOKEN));
+      return;
+    }
+
+    if (FULL_SYNC_CRONS.has(event.cron)) {
+      ctx.waitUntil(dispatchWorkflow(WORKFLOWS.fullSync, env.GITHUB_TOKEN));
       return;
     }
 
