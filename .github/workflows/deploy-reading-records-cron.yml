@@ -1,0 +1,36 @@
+name: Deploy reading-records-cron
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-reading-records-cron
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: workers/reading-records-cron/package-lock.json
+
+      - name: Install worker dependencies
+        working-directory: workers/reading-records-cron
+        run: npm ci
+
+      - name: Deploy Cloudflare Worker (code + cron triggers)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/reading-records-cron
+          command: deploy
