@@ -437,28 +437,39 @@ button:disabled {
   margin-top: 10px;
 }
 
-.stats-hour-chart.is-collapsed {
+.stats-hour-chart-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: inherit;
+  cursor: pointer;
+}
+
+.stats-hour-chart:not(.is-collapsed) .stats-hour-chart-toggle {
   display: none;
 }
 
-.stats-chart-heading-toggle {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 10px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
+.stats-hour-chart-chevron {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+  translate: 0 -1px;
 }
 
-.stats-chart-heading-toggle:disabled {
-  cursor: default;
-}
-
-.stats-chart-heading-toggle .stats-chart-heading {
-  margin: 0;
+.stats-hour-chart.is-collapsed .stats-hour-chart-body {
+  display: none;
 }
 
 .stats-hour-chart-body-head {
