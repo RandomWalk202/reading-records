@@ -437,6 +437,48 @@ button:disabled {
   margin-top: 10px;
 }
 
+.stats-hour-chart-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  border: 0;
+  padding: 2px 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.stats-hour-chart-toggle .stats-chart-heading {
+  margin: 0;
+}
+
+.stats-hour-chart-chevron {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.stats-hour-chart:not(.is-collapsed) .stats-hour-chart-chevron {
+  transform: rotate(225deg);
+  translate: 0 2px;
+}
+
+.stats-hour-chart-body {
+  margin-top: 10px;
+}
+
+.stats-hour-chart.is-collapsed .stats-hour-chart-body {
+  display: none;
+}
+
 .stats-chart-bars--hourly {
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));

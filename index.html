@@ -12,8 +12,8 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260722-ice3" />
-    <link rel="modulepreload" href="./app.js?v=20260722-ice3" />
+    <link rel="stylesheet" href="./styles.css?v=20260722-ice4" />
+    <link rel="modulepreload" href="./app.js?v=20260722-ice4" />
   </head>
   <body>
     <main class="app-shell">
@@ -75,15 +75,26 @@
             <div class="stats-chart-tooltip" id="statsChartTooltip" role="tooltip" hidden></div>
           </section>
 
-          <section class="stats-chart stats-hour-chart" id="statsHourChartSection" hidden>
-            <p class="stats-chart-heading" id="statsHourChartHeading">今日时段（估算）</p>
-            <div
-              class="stats-chart-bars stats-chart-bars--hourly"
-              id="statsHourChartBars"
-              role="img"
-              aria-label="今日阅读时段分布"
-            ></div>
-            <div class="stats-chart-tooltip" id="statsHourChartTooltip" role="tooltip" hidden></div>
+          <section class="stats-chart stats-hour-chart is-collapsed" id="statsHourChartSection" hidden>
+            <button
+              type="button"
+              class="stats-hour-chart-toggle"
+              id="statsHourChartToggle"
+              aria-expanded="false"
+              aria-controls="statsHourChartBody"
+            >
+              <span class="stats-chart-heading" id="statsHourChartHeading">阅读时段</span>
+              <span class="stats-hour-chart-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="stats-hour-chart-body" id="statsHourChartBody">
+              <div
+                class="stats-chart-bars stats-chart-bars--hourly"
+                id="statsHourChartBars"
+                role="img"
+                aria-label="阅读时段分布"
+              ></div>
+              <div class="stats-chart-tooltip" id="statsHourChartTooltip" role="tooltip" hidden></div>
+            </div>
           </section>
         </div>
       </section>
@@ -225,6 +236,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260722-ice3"></script>
+    <script type="module" src="./app.js?v=20260722-ice4"></script>
   </body>
 </html>

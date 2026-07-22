@@ -118,6 +118,8 @@ const elements = {
   statsChartTooltip: document.querySelector("#statsChartTooltip"),
   statsHourChartSection: document.querySelector("#statsHourChartSection"),
   statsHourChartHeading: document.querySelector("#statsHourChartHeading"),
+  statsHourChartToggle: document.querySelector("#statsHourChartToggle"),
+  statsHourChartBody: document.querySelector("#statsHourChartBody"),
   statsHourChartBars: document.querySelector("#statsHourChartBars"),
   statsHourChartTooltip: document.querySelector("#statsHourChartTooltip"),
   reviewDialog: document.querySelector("#reviewDialog"),
@@ -454,6 +456,21 @@ function buildTodayHourBuckets() {
   });
 }
 
+function setHourChartExpanded(expanded) {
+  if (!elements.statsHourChartSection) {
+    return;
+  }
+
+  elements.statsHourChartSection.classList.toggle("is-collapsed", !expanded);
+  if (elements.statsHourChartToggle) {
+    elements.statsHourChartToggle.setAttribute("aria-expanded", String(expanded));
+  }
+
+  if (!expanded) {
+    hideStatsChartTooltip();
+  }
+}
+
 function renderTodayHourChart() {
   if (!elements.statsHourChartSection || !elements.statsHourChartBars) {
     return;
@@ -465,21 +482,17 @@ function renderTodayHourChart() {
   if (!hasData) {
     elements.statsHourChartSection.hidden = true;
     elements.statsHourChartBars.innerHTML = "";
+    setHourChartExpanded(false);
     return;
   }
 
   const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
-  const todayLabel = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: SHANGHAI_TZ,
-    month: "numeric",
-    day: "numeric",
-  }).format(new Date());
 
   elements.statsHourChartSection.hidden = false;
   if (elements.statsHourChartHeading) {
-    elements.statsHourChartHeading.textContent = `${todayLabel} 时段（估算）`;
+    elements.statsHourChartHeading.textContent = "阅读时段";
   }
-  elements.statsHourChartBars.setAttribute("aria-label", `${todayLabel}阅读时段分布`);
+  elements.statsHourChartBars.setAttribute("aria-label", "阅读时段分布");
   elements.statsHourChartBars.innerHTML = buckets
     .map((bucket) => {
       const heightPercent =
@@ -939,6 +952,14 @@ if (elements.statsHourChartSection && elements.statsHourChartBars && elements.st
     elements.statsHourChartBars,
     elements.statsHourChartTooltip,
   );
+}
+
+if (elements.statsHourChartToggle && elements.statsHourChartSection) {
+  elements.statsHourChartToggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const expanded = elements.statsHourChartSection.classList.contains("is-collapsed");
+    setHourChartExpanded(expanded);
+  });
 }
 
 document.addEventListener("click", (event) => {
