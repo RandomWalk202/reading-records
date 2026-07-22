@@ -346,6 +346,10 @@ function shanghaiFormatParts(date, extraOptions = {}) {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    // Prefer h23 so midnight is 00, never 24 (avoids bad hour buckets in charts).
+    ...(Object.prototype.hasOwnProperty.call(extraOptions, "hour")
+      ? { hourCycle: "h23" }
+      : {}),
     ...extraOptions,
   }).formatToParts(date);
 }
@@ -422,7 +426,14 @@ function hideStatsChartTooltip() {
 }
 
 function getShanghaiHour(date = new Date()) {
-  return Number(pickShanghaiPart(shanghaiFormatParts(date, { hour: "2-digit", hour12: false }), "hour"));
+  const hour = Number(
+    pickShanghaiPart(shanghaiFormatParts(date, { hour: "2-digit", hourCycle: "h23" }), "hour"),
+  );
+  // Some engines still emit 24 at midnight; treat as 0 for chart buckets.
+  if (hour === 24) {
+    return 0;
+  }
+  return hour;
 }
 
 function getShanghaiDateKey(date = new Date()) {
@@ -430,19 +441,30 @@ function getShanghaiDateKey(date = new Date()) {
   return `${pickShanghaiPart(parts, "year")}-${pickShanghaiPart(parts, "month")}-${pickShanghaiPart(parts, "day")}`;
 }
 
+function isValidHourlyBucketKey(hourStart) {
+  return /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):00:00\+08:00$/.test(String(hourStart || ""));
+}
+
 function buildTodayHourBuckets() {
-  const todayKey = getShanghaiDateKey(new Date());
+  const now = new Date();
+  const todayKey = getShanghaiDateKey(now);
+  const currentHour = getShanghaiHour(now);
   const byHour = Array.from({ length: HOURLY_BUCKET_COUNT }, () => 0);
 
   for (const row of hourlyReadingRows) {
+    if (!isValidHourlyBucketKey(row.hour_start)) {
+      continue;
+    }
     const rowDate = new Date(row.hour_start);
-    if (getShanghaiDateKey(rowDate) !== todayKey) {
+    if (Number.isNaN(rowDate.getTime()) || getShanghaiDateKey(rowDate) !== todayKey) {
       continue;
     }
     const hour = getShanghaiHour(rowDate);
-    if (hour >= 0 && hour < HOURLY_BUCKET_COUNT) {
-      byHour[hour] += Math.max(0, Number(row.read_seconds || 0));
+    // Ignore future hour slots for today (also hides spilled bad data).
+    if (hour < 0 || hour >= HOURLY_BUCKET_COUNT || hour > currentHour) {
+      continue;
     }
+    byHour[hour] += Math.max(0, Number(row.read_seconds || 0));
   }
 
   return byHour.map((seconds, hour) => {
@@ -551,7 +573,7 @@ async function loadHourlyReading() {
       hour_start,
       read_seconds: Math.max(0, Number(read_seconds || 0)),
     }))
-    .filter((row) => row.read_seconds > 0)
+    .filter((row) => row.read_seconds > 0 && isValidHourlyBucketKey(row.hour_start))
     .sort((a, b) => String(a.hour_start).localeCompare(String(b.hour_start)));
 
   renderTodayHourChart();
