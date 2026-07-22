@@ -1,21 +1,26 @@
 :root {
   color-scheme: light;
-  --bg: #f2f4f6;
-  --bg-deep: #e6ebf0;
-  --panel: rgba(255, 255, 255, 0.5);
-  --panel-solid: rgba(255, 255, 255, 0.74);
+  --bg: #e9eef3;
+  --bg-deep: #d8e0e8;
+  --panel: rgba(255, 255, 255, 0.28);
+  --panel-solid: rgba(255, 255, 255, 0.55);
   --text: #1c2430;
   --muted: #6a7382;
-  --line: rgba(88, 108, 130, 0.16);
-  --line-strong: rgba(88, 108, 130, 0.28);
+  --line: rgba(255, 255, 255, 0.45);
+  --line-strong: rgba(255, 255, 255, 0.62);
   --accent: #5a7088;
   --accent-soft: #8fa3b5;
   --accent-dark: #3d5166;
   --ice: #c5d0da;
   --danger: #b84a4a;
-  --glass-blur: 14px;
-  --shadow: 0 14px 40px rgba(40, 55, 72, 0.08);
-  --shadow-soft: 0 6px 18px rgba(40, 55, 72, 0.06);
+  --glass-blur: 26px;
+  --glass-inner: rgba(255, 255, 255, 0.22);
+  --shadow:
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 18px 48px rgba(40, 55, 72, 0.1);
+  --shadow-soft:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 8px 22px rgba(40, 55, 72, 0.07);
   --radius-lg: 24px;
   --radius-md: 16px;
   --font-display: "Noto Serif SC", "Songti SC", "SimSun", serif;
@@ -33,11 +38,23 @@ body {
   font-family: var(--font-ui);
   background-color: var(--bg);
   background-image:
-    radial-gradient(ellipse 75% 50% at 8% -8%, rgba(170, 186, 202, 0.28), transparent 58%),
-    radial-gradient(ellipse 65% 45% at 96% 4%, rgba(198, 210, 220, 0.35), transparent 52%),
-    radial-gradient(ellipse 55% 38% at 48% 100%, rgba(220, 226, 232, 0.85), transparent 55%),
-    linear-gradient(180deg, #f7f8fa 0%, var(--bg) 40%, var(--bg-deep) 100%);
+    radial-gradient(ellipse 70% 48% at 12% 8%, rgba(150, 172, 196, 0.55), transparent 58%),
+    radial-gradient(ellipse 55% 42% at 88% 12%, rgba(186, 202, 216, 0.62), transparent 52%),
+    radial-gradient(ellipse 50% 36% at 70% 72%, rgba(168, 184, 204, 0.4), transparent 55%),
+    radial-gradient(ellipse 48% 34% at 18% 78%, rgba(210, 220, 230, 0.7), transparent 50%),
+    linear-gradient(165deg, #f4f6f8 0%, var(--bg) 42%, var(--bg-deep) 100%);
   background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.55), transparent 28%),
+    radial-gradient(circle at 78% 36%, rgba(255, 255, 255, 0.35), transparent 24%);
 }
 
 button,
@@ -91,9 +108,12 @@ button:disabled {
 }
 
 .challenge-card {
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass-inner);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   padding: 16px;
   min-width: 0;
 }
@@ -162,9 +182,11 @@ button:disabled {
   flex-wrap: wrap;
   gap: 6px;
   padding: 4px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .shelf-tabs {
@@ -173,9 +195,11 @@ button:disabled {
   width: 100%;
   gap: 4px;
   padding: 4px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .stats-tab,
@@ -229,9 +253,12 @@ button:disabled {
 }
 
 .stats-card {
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass-inner);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   padding: 16px;
   min-width: 0;
 }
@@ -335,9 +362,11 @@ button:disabled {
   gap: 4px;
   min-height: 148px;
   padding: 14px 8px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.48);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .stats-chart-bars--monthly {
@@ -548,12 +577,35 @@ h3 {
 }
 
 .panel {
-  border: 1px solid rgba(255, 255, 255, 0.62);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: var(--radius-lg);
-  background: var(--panel);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.12) 48%, rgba(255, 255, 255, 0.22) 100%),
+    var(--panel);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.05) 32%,
+    transparent 58%
+  );
+}
+
+.panel > * {
+  position: relative;
+  z-index: 1;
 }
 
 .book-section {
@@ -575,9 +627,11 @@ h3 {
 .shelf-header .shelf-search input {
   width: 100%;
   max-width: 280px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--text);
   outline: none;
   padding: 12px 14px;
@@ -645,9 +699,12 @@ h3 {
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 14px;
   align-items: start;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.52);
+  background: var(--glass-inner);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   padding: 14px;
   content-visibility: auto;
   contain-intrinsic-size: auto 140px;
