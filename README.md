@@ -98,8 +98,16 @@ NODE_BIN=/你电脑上/node的完整路径
 
 ### Cloudflare Workers Cron（自动定时）
 
-项目已包含 Worker 配置：`workers/reading-records-cron/`。  
-同时保留 GitHub Actions `schedule` 作为备份（北京时间 08:05 / 14:05 / 21:05），避免 Cloudflare 触发失败时整天不同步。
+项目已包含 Worker 配置：`workers/reading-records-cron/`。
+
+定时任务（北京时间）：
+
+- **每小时 :05**：轻量同步，用总体阅读时长快照差额，估算刚结束小时区间的阅读时长（存入 `weread_challenge` 中 `id=weread-hourly-v1`）
+- **每天 08:10 / 14:10 / 21:10**：全量同步书架、划线、统计与挑战进度（同时也会更新小时差额）
+
+GitHub Actions 同步保留相同节奏的 `schedule` 作为备份，避免 Cloudflare 触发失败时整天不同步。
+
+小时数据是**估算值**（接口只有按天明细）：漏跑某小时时，差额可能合并进后续桶。
 
 **一次性准备：**
 
@@ -125,7 +133,8 @@ npm run deploy
 
 当前 Worker 定时（北京时间）：
 
-- **每天 08:00 / 14:00 / 21:00**：触发 `Sync WeRead` 全量同步
+- **每小时 :05**：`Record Reading Hour`（小时差额）
+- **每天 08:10 / 14:10 / 21:10**：`Sync WeRead` 全量同步
 
 查看实时日志：
 
@@ -135,6 +144,7 @@ npm run tail
 
 ## 后端
 
-- Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`、`weread_challenge`（30 天阅读挑战进度）、`weread_book_reviews`（读后感，仅弹窗展示）
+- Supabase table：`weread_books`、`weread_highlights`、`weread_reading_stats`、`weread_challenge`（30 天阅读挑战进度；另用 `id=weread-hourly-v1` 存小时估算）、`weread_book_reviews`（读后感，仅弹窗展示）
 - 阅读挑战：`weread_challenge.baseline_through_date` 及之前的 `daily_read_seconds` 为手动基准，同步只更新该日期之后的每日阅读数据
+- 小时阅读：每小时用 overall `totalReadTime` 快照差额估算时段；网页「今日时段」图展示当天估算结果
 - 当前版本为了方便共享，允许公开读取、写入（同步脚本使用）

@@ -1,0 +1,30 @@
+name: Record Reading Hour
+
+on:
+  schedule:
+    # Every hour at :05 UTC (also :05 Beijing). Attributes delta to finished Shanghai hours.
+    - cron: "5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: record-reading-hour
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  record-hourly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Record reading delta for finished hour buckets
+        env:
+          WEREAD_API_KEY: ${{ secrets.WEREAD_API_KEY }}
+        run: node scripts/record-reading-hour.mjs

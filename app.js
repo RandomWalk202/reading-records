@@ -116,6 +116,10 @@ const elements = {
   statsDailyChartSection: document.querySelector("#statsDailyChartSection"),
   statsDailyChartBars: document.querySelector("#statsDailyChartBars"),
   statsChartTooltip: document.querySelector("#statsChartTooltip"),
+  statsHourChartSection: document.querySelector("#statsHourChartSection"),
+  statsHourChartHeading: document.querySelector("#statsHourChartHeading"),
+  statsHourChartBars: document.querySelector("#statsHourChartBars"),
+  statsHourChartTooltip: document.querySelector("#statsHourChartTooltip"),
   reviewDialog: document.querySelector("#reviewDialog"),
   reviewForm: document.querySelector("#reviewForm"),
   reviewDialogTitle: document.querySelector("#reviewDialogTitle"),
@@ -154,17 +158,21 @@ const STATS_MODE_LABELS = {
 let readingStatsByMode = {};
 let activeStatsMode = "weekly";
 let challengeRow = null;
+let hourlyReadingRows = [];
 
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 2;
 const LOADING_LABEL = "正在加载";
-const CACHE_KEY = "reading-records-cache-v9";
+const CACHE_KEY = "reading-records-cache-v10";
 const SHANGHAI_TZ = "Asia/Shanghai";
 const CACHE_LEGACY_KEY = "reading-records-cache-v3";
 const REVIEWS_STORAGE_KEY = "reading-records.book-reviews-v1";
 const REVIEWS_MIGRATED_KEY = "reading-records.book-reviews-migrated-v1";
 const REVIEW_COLUMNS = "id,weread_book_id,review_text,created_at";
 const MIN_READ_DAY_SECONDS = 60;
+const HOURLY_STATE_ID = "weread-hourly-v1";
+const HOURLY_BUCKET_COUNT = 24;
+const HOURLY_TICK_INTERVAL = 3;
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const DAY_MS = 86400000;
@@ -404,6 +412,129 @@ function hideStatsChartTooltip() {
   activeChartTooltip = null;
   elements.statsChartTooltip.hidden = true;
   elements.statsChartTooltip.classList.remove("is-visible");
+  if (elements.statsHourChartTooltip) {
+    elements.statsHourChartTooltip.hidden = true;
+    elements.statsHourChartTooltip.classList.remove("is-visible");
+  }
+}
+
+function getShanghaiHour(date = new Date()) {
+  return Number(pickShanghaiPart(shanghaiFormatParts(date, { hour: "2-digit", hour12: false }), "hour"));
+}
+
+function getShanghaiDateKey(date = new Date()) {
+  const parts = shanghaiFormatParts(date);
+  return `${pickShanghaiPart(parts, "year")}-${pickShanghaiPart(parts, "month")}-${pickShanghaiPart(parts, "day")}`;
+}
+
+function buildTodayHourBuckets() {
+  const todayKey = getShanghaiDateKey(new Date());
+  const byHour = Array.from({ length: HOURLY_BUCKET_COUNT }, () => 0);
+
+  for (const row of hourlyReadingRows) {
+    const rowDate = new Date(row.hour_start);
+    if (getShanghaiDateKey(rowDate) !== todayKey) {
+      continue;
+    }
+    const hour = getShanghaiHour(rowDate);
+    if (hour >= 0 && hour < HOURLY_BUCKET_COUNT) {
+      byHour[hour] += Math.max(0, Number(row.read_seconds || 0));
+    }
+  }
+
+  return byHour.map((seconds, hour) => {
+    const endHour = (hour + 1) % HOURLY_BUCKET_COUNT;
+    const showTick = hour % HOURLY_TICK_INTERVAL === 0;
+    return {
+      hour,
+      seconds,
+      label: showTick ? String(hour) : "",
+      rangeLabel: `${hour}点–${endHour}点`,
+    };
+  });
+}
+
+function renderTodayHourChart() {
+  if (!elements.statsHourChartSection || !elements.statsHourChartBars) {
+    return;
+  }
+
+  const buckets = buildTodayHourBuckets();
+  const hasData = buckets.some((bucket) => bucket.seconds > 0);
+
+  if (!hasData) {
+    elements.statsHourChartSection.hidden = true;
+    elements.statsHourChartBars.innerHTML = "";
+    return;
+  }
+
+  const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
+  const todayLabel = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: SHANGHAI_TZ,
+    month: "numeric",
+    day: "numeric",
+  }).format(new Date());
+
+  elements.statsHourChartSection.hidden = false;
+  if (elements.statsHourChartHeading) {
+    elements.statsHourChartHeading.textContent = `${todayLabel} 时段（估算）`;
+  }
+  elements.statsHourChartBars.setAttribute("aria-label", `${todayLabel}阅读时段分布`);
+  elements.statsHourChartBars.innerHTML = buckets
+    .map((bucket) => {
+      const heightPercent =
+        bucket.seconds > 0 ? Math.max(8, Math.round((bucket.seconds / maxSeconds) * 100)) : 0;
+      const duration = formatChartDuration(bucket.seconds);
+      const chartLabel = `${bucket.rangeLabel} ${duration}`;
+      const tickClass = bucket.label
+        ? "stats-chart-label stats-chart-tick"
+        : "stats-chart-label stats-chart-tick is-spacer";
+
+      return `
+        <div class="stats-chart-col">
+          <button
+            type="button"
+            class="stats-chart-bar-wrap"
+            data-chart-seconds="${bucket.seconds}"
+            data-chart-label="${escapeHtml(chartLabel)}"
+            aria-label="${escapeHtml(chartLabel)}"
+          >
+            <span
+              class="stats-chart-bar${bucket.seconds === 0 ? " is-empty" : ""}"
+              style="height: ${heightPercent}%"
+            ></span>
+          </button>
+          <span class="${tickClass}">${escapeHtml(bucket.label)}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+async function loadHourlyReading() {
+  const { data, error } = await restSelect("weread_challenge", {
+    select: "daily_read_seconds,synced_at",
+    filter: { id: `eq.${HOURLY_STATE_ID}` },
+  });
+
+  if (error) {
+    console.warn("Load hourly reading failed:", error.message);
+    hourlyReadingRows = [];
+    renderTodayHourChart();
+    return;
+  }
+
+  const hourly = data?.[0]?.daily_read_seconds || {};
+  hourlyReadingRows = Object.entries(hourly)
+    .map(([hour_start, read_seconds]) => ({
+      hour_start,
+      read_seconds: Math.max(0, Number(read_seconds || 0)),
+    }))
+    .filter((row) => row.read_seconds > 0)
+    .sort((a, b) => String(a.hour_start).localeCompare(String(b.hour_start)));
+
+  renderTodayHourChart();
+  writeCache();
 }
 
 function showStatsChartTooltip(section, tooltip, barWrap) {
@@ -649,6 +780,7 @@ function writeCache() {
         savedAt: Date.now(),
         stats: readingStatsByMode,
         challenge: challengeRow,
+        hourly: hourlyReadingRows,
         books: wereadBooks,
       }),
     );
@@ -671,6 +803,11 @@ function hydrateFromCache(cache) {
     challengeRow = cache.challenge;
     renderChallenge();
     hydrated = true;
+  }
+
+  if (Array.isArray(cache.hourly)) {
+    hourlyReadingRows = cache.hourly;
+    renderTodayHourChart();
   }
 
   if (cache.books?.length) {
@@ -728,6 +865,7 @@ function renderReadingStats() {
   elements.statsDayAverage.textContent = formatDurationSeconds(payload.dayAverageReadTime);
 
   renderDailyReadChart(payload, activeStatsMode);
+  renderTodayHourChart();
 }
 
 async function loadReadingStats() {
@@ -795,8 +933,19 @@ bindStatsChartSection(
   elements.statsChartTooltip,
 );
 
+if (elements.statsHourChartSection && elements.statsHourChartBars && elements.statsHourChartTooltip) {
+  bindStatsChartSection(
+    elements.statsHourChartSection,
+    elements.statsHourChartBars,
+    elements.statsHourChartTooltip,
+  );
+}
+
 document.addEventListener("click", (event) => {
-  if (event.target.closest("#statsDailyChartSection")) {
+  if (
+    event.target.closest("#statsDailyChartSection") ||
+    event.target.closest("#statsHourChartSection")
+  ) {
     return;
   }
 
@@ -1652,7 +1801,7 @@ if (cached) {
   hydrateFromCache(cached);
 }
 
-Promise.all([loadReadingStats(), loadChallenge(), loadWereadBooks()])
+Promise.all([loadReadingStats(), loadChallenge(), loadHourlyReading(), loadWereadBooks()])
   .then(() => scheduleBookReviewsLoad())
   .catch((error) => {
     console.error(error);
