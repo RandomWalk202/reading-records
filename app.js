@@ -162,6 +162,8 @@ let readingStatsByMode = {};
 let activeStatsMode = "weekly";
 let challengeRow = null;
 let hourlyReadingRows = [];
+/** Shanghai YYYY-MM-DD for the hour chart; null means today. */
+let selectedHourDateKey = null;
 
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 2;
@@ -445,10 +447,25 @@ function isValidHourlyBucketKey(hourStart) {
   return /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):00:00\+08:00$/.test(String(hourStart || ""));
 }
 
-function buildTodayHourBuckets() {
-  const now = new Date();
-  const todayKey = getShanghaiDateKey(now);
-  const currentHour = getShanghaiHour(now);
+function resolveHourDateKey() {
+  return selectedHourDateKey || getShanghaiDateKey(new Date());
+}
+
+function formatHourDateHeading(dateKey) {
+  const [year, month, day] = String(dateKey || "").split("-").map(Number);
+  if (!year || !month || !day) {
+    return "阅读时段";
+  }
+  const todayKey = getShanghaiDateKey(new Date());
+  if (dateKey === todayKey) {
+    return "阅读时段 · 今天";
+  }
+  return `阅读时段 · ${month}月${day}日`;
+}
+
+function buildHourBucketsForDate(dateKey) {
+  const todayKey = getShanghaiDateKey(new Date());
+  const currentHour = getShanghaiHour(new Date());
   const byHour = Array.from({ length: HOURLY_BUCKET_COUNT }, () => 0);
 
   for (const row of hourlyReadingRows) {
@@ -456,12 +473,15 @@ function buildTodayHourBuckets() {
       continue;
     }
     const rowDate = new Date(row.hour_start);
-    if (Number.isNaN(rowDate.getTime()) || getShanghaiDateKey(rowDate) !== todayKey) {
+    if (Number.isNaN(rowDate.getTime()) || getShanghaiDateKey(rowDate) !== dateKey) {
       continue;
     }
     const hour = getShanghaiHour(rowDate);
-    // Ignore future hour slots for today (also hides spilled bad data).
-    if (hour < 0 || hour >= HOURLY_BUCKET_COUNT || hour > currentHour) {
+    // For today, ignore future hour slots (also hides spilled bad data).
+    if (hour < 0 || hour >= HOURLY_BUCKET_COUNT) {
+      continue;
+    }
+    if (dateKey === todayKey && hour > currentHour) {
       continue;
     }
     byHour[hour] += Math.max(0, Number(row.read_seconds || 0));
@@ -498,28 +518,42 @@ function setHourChartExpanded(expanded) {
   }
 }
 
-function renderTodayHourChart() {
+function renderTodayHourChart({ forceExpand = false } = {}) {
   if (!elements.statsHourChartSection || !elements.statsHourChartBars) {
     return;
   }
 
-  const buckets = buildTodayHourBuckets();
+  const dateKey = resolveHourDateKey();
+  const buckets = buildHourBucketsForDate(dateKey);
   const hasData = buckets.some((bucket) => bucket.seconds > 0);
+  const heading = formatHourDateHeading(dateKey);
+  const userPickedDay = Boolean(selectedHourDateKey);
 
-  if (!hasData) {
+  // Auto mode (no day picked): hide when today has no hour data.
+  if (!hasData && !userPickedDay) {
     elements.statsHourChartSection.hidden = true;
     elements.statsHourChartBars.innerHTML = "";
     setHourChartExpanded(false);
     return;
   }
 
-  const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
-
   elements.statsHourChartSection.hidden = false;
   if (elements.statsHourChartHeading) {
-    elements.statsHourChartHeading.textContent = "阅读时段";
+    elements.statsHourChartHeading.textContent = heading;
   }
-  elements.statsHourChartBars.setAttribute("aria-label", "阅读时段分布");
+
+  if (!hasData) {
+    elements.statsHourChartBars.classList.add("is-empty-day");
+    elements.statsHourChartBars.setAttribute("aria-label", `${heading}，暂无时段数据`);
+    elements.statsHourChartBars.innerHTML =
+      `<p class="stats-hour-empty">这天还没有时段数据</p>`;
+    setHourChartExpanded(true);
+    return;
+  }
+
+  const maxSeconds = Math.max(...buckets.map((bucket) => bucket.seconds), 1);
+  elements.statsHourChartBars.classList.remove("is-empty-day");
+  elements.statsHourChartBars.setAttribute("aria-label", `${heading}分布`);
   elements.statsHourChartBars.innerHTML = buckets
     .map((bucket) => {
       const heightPercent =
@@ -550,8 +584,12 @@ function renderTodayHourChart() {
     })
     .join("");
 
-  const expanded = !elements.statsHourChartSection.classList.contains("is-collapsed");
-  setHourChartExpanded(expanded);
+  if (forceExpand || userPickedDay) {
+    setHourChartExpanded(true);
+  } else {
+    const expanded = !elements.statsHourChartSection.classList.contains("is-collapsed");
+    setHourChartExpanded(expanded);
+  }
 }
 
 async function loadHourlyReading() {
@@ -638,6 +676,9 @@ function renderDailyReadChart(payload, mode) {
     `${STATS_MODE_LABELS[mode]}阅读分布，有效阅读 ${readDayCount} ${readDayUnit}`,
   );
 
+  const canPickDay = mode === "weekly" || mode === "monthly";
+  const activeDateKey = resolveHourDateKey();
+
   elements.statsDailyChartBars.innerHTML = buckets
     .map((bucket) => {
       const heightPercent =
@@ -645,20 +686,25 @@ function renderDailyReadChart(payload, mode) {
       const isReadDay = bucket.seconds >= MIN_READ_DAY_SECONDS;
       const duration = formatChartDuration(bucket.seconds);
       const dayLabel = formatDistributionBucketLabel(bucket.timestamp, mode);
+      const dateKey = canPickDay ? getShanghaiDateKey(new Date(bucket.timestamp)) : "";
+      const isSelected = Boolean(dateKey && dateKey === activeDateKey && selectedHourDateKey);
       const chartLabel =
         mode === "monthly"
           ? `${formatMonthlyChartDateLabel(bucket.timestamp)} ${duration}`
           : duration;
       const labelMarkup = renderChartLabel(bucket, mode);
+      const pickHint = canPickDay ? "，点击查看时段" : "";
 
       return `
-        <div class="stats-chart-col">
+        <div class="stats-chart-col${isSelected ? " is-selected" : ""}">
           <button
             type="button"
             class="stats-chart-bar-wrap"
             data-chart-seconds="${bucket.seconds}"
             data-chart-label="${escapeHtml(chartLabel)}"
-            aria-label="${escapeHtml(mode === "monthly" ? chartLabel : `${dayLabel} ${duration}`)}"
+            data-date-key="${escapeHtml(dateKey)}"
+            aria-pressed="${isSelected ? "true" : "false"}"
+            aria-label="${escapeHtml(mode === "monthly" ? chartLabel : `${dayLabel} ${duration}`)}${pickHint}"
           >
             <span
               class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
@@ -938,6 +984,7 @@ async function loadReadingStats() {
 
 function setActiveStatsMode(mode) {
   activeStatsMode = mode;
+  selectedHourDateKey = null;
   hideStatsChartTooltip();
   for (const tab of elements.statsTabs) {
     const isActive = tab.dataset.mode === mode;
@@ -970,11 +1017,46 @@ function bindStatsChartSection(section, bars, tooltip) {
   });
 }
 
-bindStatsChartSection(
-  elements.statsDailyChartSection,
-  elements.statsDailyChartBars,
-  elements.statsChartTooltip,
-);
+function selectHourDateFromDailyBar(barWrap) {
+  const dateKey = barWrap?.dataset?.dateKey;
+  if (!dateKey || (activeStatsMode !== "weekly" && activeStatsMode !== "monthly")) {
+    return false;
+  }
+
+  selectedHourDateKey = dateKey;
+  renderDailyReadChart(readingStatsByMode[activeStatsMode], activeStatsMode);
+  renderTodayHourChart({ forceExpand: true });
+
+  if (elements.statsHourChartSection) {
+    elements.statsHourChartSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  return true;
+}
+
+if (elements.statsDailyChartSection && elements.statsDailyChartBars && elements.statsChartTooltip) {
+  elements.statsDailyChartBars.addEventListener("click", (event) => {
+    const barWrap = event.target.closest(".stats-chart-bar-wrap");
+    if (!barWrap) {
+      return;
+    }
+
+    event.stopPropagation();
+    const picked = selectHourDateFromDailyBar(barWrap);
+
+    if (barWrap === activeChartBarWrap && activeChartTooltip === elements.statsChartTooltip && !picked) {
+      hideStatsChartTooltip();
+      return;
+    }
+
+    activeChartBarWrap = barWrap;
+    showStatsChartTooltip(
+      elements.statsDailyChartSection,
+      elements.statsChartTooltip,
+      barWrap,
+    );
+  });
+}
 
 if (elements.statsHourChartSection && elements.statsHourChartBars && elements.statsHourChartTooltip) {
   bindStatsChartSection(

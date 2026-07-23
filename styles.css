@@ -304,6 +304,13 @@ button:disabled {
   font-weight: 600;
 }
 
+.stats-chart-hint {
+  margin-left: 6px;
+  color: rgba(90, 110, 128, 0.85);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
 .stats-chart-heading-row {
   display: flex;
   flex-wrap: wrap;
@@ -435,6 +442,24 @@ button:disabled {
 
 .stats-hour-chart {
   margin-top: 10px;
+}
+
+.stats-hour-empty {
+  margin: 0;
+  width: 100%;
+  min-height: 88px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.stats-chart-bars--hourly.is-empty-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stats-hour-chart-toggle {
@@ -575,6 +600,22 @@ button:disabled {
 
 .stats-chart-bar.is-empty {
   background: transparent;
+}
+
+.stats-chart-col.is-selected .stats-chart-bar-wrap {
+  outline: 1.5px solid rgba(74, 122, 168, 0.55);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.stats-chart-col.is-selected .stats-chart-bar:not(.is-empty) {
+  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+  box-shadow: 0 0 0 1px rgba(74, 122, 168, 0.18);
+}
+
+.stats-chart-col.is-selected .stats-chart-label {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .stats-chart-label {
