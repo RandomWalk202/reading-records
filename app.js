@@ -688,8 +688,6 @@ function renderDailyReadChart(payload, mode) {
           ? `${formatMonthlyChartDateLabel(bucket.timestamp)} ${duration}`
           : duration;
       const labelMarkup = renderChartLabel(bucket, mode);
-      const pickHint = canPickDay ? "，点击查看时段" : "";
-
       return `
         <div class="stats-chart-col${isSelected ? " is-selected" : ""}">
           <button
@@ -699,7 +697,7 @@ function renderDailyReadChart(payload, mode) {
             data-chart-label="${escapeHtml(chartLabel)}"
             data-date-key="${escapeHtml(dateKey)}"
             aria-pressed="${isSelected ? "true" : "false"}"
-            aria-label="${escapeHtml(mode === "monthly" ? chartLabel : `${dayLabel} ${duration}`)}${pickHint}"
+            aria-label="${escapeHtml(mode === "monthly" ? chartLabel : `${dayLabel} ${duration}`)}"
           >
             <span
               class="stats-chart-bar${isReadDay ? " is-read-day" : ""}${bucket.seconds === 0 ? " is-empty" : ""}"
