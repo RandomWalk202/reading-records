@@ -523,19 +523,19 @@ function renderTodayHourChart({ forceExpand = false } = {}) {
     return;
   }
 
-  const dateKey = resolveHourDateKey();
-  const buckets = buildHourBucketsForDate(dateKey);
-  const hasData = buckets.some((bucket) => bucket.seconds > 0);
-  const heading = formatHourDateHeading(dateKey);
-  const userPickedDay = Boolean(selectedHourDateKey);
-
-  // Auto mode (no day picked): hide when today has no hour data.
-  if (!hasData && !userPickedDay) {
+  // Only show after the user taps a day in 阅读分布.
+  if (!selectedHourDateKey) {
     elements.statsHourChartSection.hidden = true;
     elements.statsHourChartBars.innerHTML = "";
+    elements.statsHourChartBars.classList.remove("is-empty-day");
     setHourChartExpanded(false);
     return;
   }
+
+  const dateKey = selectedHourDateKey;
+  const buckets = buildHourBucketsForDate(dateKey);
+  const hasData = buckets.some((bucket) => bucket.seconds > 0);
+  const heading = formatHourDateHeading(dateKey);
 
   elements.statsHourChartSection.hidden = false;
   if (elements.statsHourChartHeading) {
@@ -584,12 +584,7 @@ function renderTodayHourChart({ forceExpand = false } = {}) {
     })
     .join("");
 
-  if (forceExpand || userPickedDay) {
-    setHourChartExpanded(true);
-  } else {
-    const expanded = !elements.statsHourChartSection.classList.contains("is-collapsed");
-    setHourChartExpanded(expanded);
-  }
+  setHourChartExpanded(forceExpand || true);
 }
 
 async function loadHourlyReading() {
