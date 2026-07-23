@@ -1012,10 +1012,24 @@ function bindStatsChartSection(section, bars, tooltip) {
   });
 }
 
+function clearSelectedHourDate() {
+  if (!selectedHourDateKey) {
+    hideStatsChartTooltip();
+    return;
+  }
+
+  selectedHourDateKey = null;
+  hideStatsChartTooltip();
+  if (readingStatsByMode[activeStatsMode]) {
+    renderDailyReadChart(readingStatsByMode[activeStatsMode], activeStatsMode);
+  }
+  renderTodayHourChart();
+}
+
 function selectHourDateFromDailyBar(barWrap) {
   const dateKey = barWrap?.dataset?.dateKey;
   if (!dateKey || (activeStatsMode !== "weekly" && activeStatsMode !== "monthly")) {
-    return false;
+    return null;
   }
 
   selectedHourDateKey = dateKey;
@@ -1026,7 +1040,8 @@ function selectHourDateFromDailyBar(barWrap) {
     elements.statsHourChartSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  return true;
+  // DOM was re-rendered; return the fresh bar so the duration tooltip still works.
+  return elements.statsDailyChartBars.querySelector(`[data-date-key="${dateKey}"]`);
 }
 
 if (elements.statsDailyChartSection && elements.statsDailyChartBars && elements.statsChartTooltip) {
@@ -1037,18 +1052,22 @@ if (elements.statsDailyChartSection && elements.statsDailyChartBars && elements.
     }
 
     event.stopPropagation();
-    const picked = selectHourDateFromDailyBar(barWrap);
+    const pickedBar = selectHourDateFromDailyBar(barWrap) || barWrap;
 
-    if (barWrap === activeChartBarWrap && activeChartTooltip === elements.statsChartTooltip && !picked) {
+    if (
+      pickedBar === activeChartBarWrap &&
+      activeChartTooltip === elements.statsChartTooltip &&
+      !barWrap.dataset.dateKey
+    ) {
       hideStatsChartTooltip();
       return;
     }
 
-    activeChartBarWrap = barWrap;
+    activeChartBarWrap = pickedBar;
     showStatsChartTooltip(
       elements.statsDailyChartSection,
       elements.statsChartTooltip,
-      barWrap,
+      pickedBar,
     );
   });
 }
@@ -1064,27 +1083,30 @@ if (elements.statsHourChartSection && elements.statsHourChartBars && elements.st
 if (elements.statsHourChartToggle && elements.statsHourChartSection) {
   elements.statsHourChartToggle.addEventListener("click", (event) => {
     event.stopPropagation();
-    const expanded = elements.statsHourChartSection.classList.contains("is-collapsed");
-    setHourChartExpanded(expanded);
+    clearSelectedHourDate();
   });
 }
 
 if (elements.statsHourChartCollapse && elements.statsHourChartSection) {
   elements.statsHourChartCollapse.addEventListener("click", (event) => {
     event.stopPropagation();
-    setHourChartExpanded(false);
+    clearSelectedHourDate();
   });
 }
 
 document.addEventListener("click", (event) => {
-  if (
-    event.target.closest("#statsDailyChartSection") ||
-    event.target.closest("#statsHourChartSection")
-  ) {
+  const onDailyBar = event.target.closest("#statsDailyChartBars .stats-chart-bar-wrap");
+  const onHourBar = event.target.closest("#statsHourChartBars .stats-chart-bar-wrap");
+  const onHourCollapse = event.target.closest("#statsHourChartCollapse, #statsHourChartToggle");
+
+  // Clicks on bars / collapse controls are handled above.
+  if (onDailyBar || onHourBar || onHourCollapse) {
     return;
   }
 
+  // Blank area: dismiss duration tip and hide the hour chart.
   hideStatsChartTooltip();
+  clearSelectedHourDate();
 });
 
 function showWereadLoading() {

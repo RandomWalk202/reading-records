@@ -304,13 +304,6 @@ button:disabled {
   font-weight: 600;
 }
 
-.stats-chart-hint {
-  margin-left: 6px;
-  color: rgba(90, 110, 128, 0.85);
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
 .stats-chart-heading-row {
   display: flex;
   flex-wrap: wrap;
