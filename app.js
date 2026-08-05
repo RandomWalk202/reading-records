@@ -1216,14 +1216,14 @@ async function loadWereadBooks() {
 const SHELF_TAB_ORDER = ["reading", "finished", "toRead"];
 
 function getBookShelf(book) {
-  const hasHighlights = book.highlights.length > 0 || book.hasHighlights;
-
-  if (!hasHighlights) {
-    return "toRead";
-  }
-
+  // Imported / off-platform books may have no synced highlights but are still finished.
   if (book.finish_reading) {
     return "finished";
+  }
+
+  const hasHighlights = book.highlights.length > 0 || book.hasHighlights;
+  if (!hasHighlights) {
+    return "toRead";
   }
 
   return "reading";
@@ -1765,13 +1765,13 @@ function classifyWereadBooks(books) {
   const finished = [];
 
   for (const book of books) {
-    if (!book.highlights.length) {
-      toRead.push(book);
+    if (book.finish_reading) {
+      finished.push(book);
       continue;
     }
 
-    if (book.finish_reading) {
-      finished.push(book);
+    if (!book.highlights.length) {
+      toRead.push(book);
       continue;
     }
 
