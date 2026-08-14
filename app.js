@@ -143,13 +143,6 @@ const elements = {
   highlightsDialogAuthor: document.querySelector("#highlightsDialogAuthor"),
   highlightsDialogList: document.querySelector("#highlightsDialogList"),
   highlightsDialogClose: document.querySelector("#highlightsDialogClose"),
-  challengeSection: document.querySelector("#challengeSection"),
-  challengeDaysValue: document.querySelector("#challengeDaysValue"),
-  challengeDaysBar: document.querySelector("#challengeDaysBar"),
-  challengeDaysRemaining: document.querySelector("#challengeDaysRemaining"),
-  challengeTimeValue: document.querySelector("#challengeTimeValue"),
-  challengeTimeBar: document.querySelector("#challengeTimeBar"),
-  challengeTimeRemaining: document.querySelector("#challengeTimeRemaining"),
 };
 
 const STATS_MODE_LABELS = {
@@ -160,7 +153,6 @@ const STATS_MODE_LABELS = {
 
 let readingStatsByMode = {};
 let activeStatsMode = "weekly";
-let challengeRow = null;
 let hourlyReadingRows = [];
 /** Shanghai YYYY-MM-DD for the hour chart; null means today. */
 let selectedHourDateKey = null;
@@ -168,7 +160,7 @@ let selectedHourDateKey = null;
 const WEREAD_OPEN_URL = "weread://reading?bId=";
 const WEREAD_HIGHLIGHTS_DISPLAY = 2;
 const LOADING_LABEL = "正在加载";
-const CACHE_KEY = "reading-records-cache-v10";
+const CACHE_KEY = "reading-records-cache-v11";
 const SHANGHAI_TZ = "Asia/Shanghai";
 const CACHE_LEGACY_KEY = "reading-records-cache-v3";
 const REVIEWS_STORAGE_KEY = "reading-records.book-reviews-v1";
@@ -232,52 +224,6 @@ function formatDurationSeconds(totalSeconds) {
   }
 
   return "不足 1 分钟";
-}
-
-function formatShortDuration(seconds) {
-  const total = Math.max(0, Number(seconds || 0));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-
-  if (hours > 0) {
-    return `${hours} 小时 ${minutes} 分`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes} 分钟`;
-  }
-
-  if (total > 0) {
-    return "不足 1 分钟";
-  }
-
-  return "未阅读";
-}
-
-function formatChallengeRemainingDuration(totalSeconds, targetSeconds) {
-  const targetHours = Math.floor(Math.max(0, targetSeconds) / 3600);
-  const targetMinutes = Math.floor((Math.max(0, targetSeconds) % 3600) / 60);
-  const readHours = Math.floor(Math.max(0, totalSeconds) / 3600);
-  const readMinutes = Math.floor((Math.max(0, totalSeconds) % 3600) / 60);
-
-  let remHours = targetHours - readHours;
-  let remMinutes = targetMinutes - readMinutes;
-  if (remMinutes < 0) {
-    remHours -= 1;
-    remMinutes += 60;
-  }
-  remHours = Math.max(0, remHours);
-  remMinutes = Math.max(0, remMinutes);
-
-  if (remHours > 0) {
-    return `${remHours} 小时 ${remMinutes} 分`;
-  }
-
-  if (remMinutes > 0) {
-    return `${remMinutes} 分钟`;
-  }
-
-  return "未阅读";
 }
 
 function lookupReadSeconds(readTimes, timestampMs) {
@@ -711,110 +657,6 @@ function renderDailyReadChart(payload, mode) {
     .join("");
 }
 
-function formatChallengePeriod(startDate, endDate) {
-  const formatPart = (isoDate) => {
-    const [year, month, day] = isoDate.split("-").map(Number);
-    return `${year}.${month}.${day}`;
-  };
-
-  return `${formatPart(startDate)} – ${formatPart(endDate)}`;
-}
-
-function nextIsoDateShanghai(isoDate) {
-  const nextMs = new Date(`${isoDate}T00:00:00+08:00`).getTime() + DAY_MS;
-  const parts = shanghaiFormatParts(new Date(nextMs));
-  return `${pickShanghaiPart(parts, "year")}-${pickShanghaiPart(parts, "month")}-${pickShanghaiPart(parts, "day")}`;
-}
-
-function listChallengeDates(startDate, endDate) {
-  const dates = [];
-  let current = startDate;
-
-  while (current <= endDate) {
-    dates.push(current);
-    current = nextIsoDateShanghai(current);
-  }
-
-  return dates;
-}
-
-function summarizeChallenge(row) {
-  const daily = row.daily_read_seconds || {};
-  const dates = listChallengeDates(row.start_date, row.end_date);
-  let readDays = 0;
-  let totalSeconds = 0;
-
-  for (const date of dates) {
-    const seconds = Math.max(0, Number(daily[date] || 0));
-    totalSeconds += seconds;
-    if (seconds >= MIN_READ_DAY_SECONDS) {
-      readDays += 1;
-    }
-  }
-
-  return { readDays, totalSeconds };
-}
-
-function renderChallenge() {
-  if (!challengeRow) {
-    elements.challengeSection.hidden = true;
-    return;
-  }
-
-  const { readDays, totalSeconds } = summarizeChallenge(challengeRow);
-  const targetDays = Number(challengeRow.target_days || 0);
-  const targetSeconds = Number(challengeRow.target_seconds || 0);
-  const daysRemaining = Math.max(0, targetDays - readDays);
-  const daysPercent = targetDays > 0 ? Math.min(100, (readDays / targetDays) * 100) : 0;
-  const timePercent = targetSeconds > 0 ? Math.min(100, (totalSeconds / targetSeconds) * 100) : 0;
-  const daysCompleted = targetDays > 0 && readDays >= targetDays;
-  const timeCompleted = targetSeconds > 0 && totalSeconds >= targetSeconds;
-
-  elements.challengeSection.hidden = false;
-
-  elements.challengeDaysValue.textContent = `已阅读 ${daysCompleted ? targetDays : readDays} 天`;
-  elements.challengeDaysBar.style.width = `${daysPercent}%`;
-  elements.challengeDaysRemaining.textContent = daysCompleted
-    ? "已完成"
-    : `还需阅读 ${daysRemaining} 天`;
-
-  elements.challengeTimeValue.textContent = `已阅读 ${formatShortDuration(
-    timeCompleted ? targetSeconds : totalSeconds,
-  )}`;
-  elements.challengeTimeBar.style.width = `${timePercent}%`;
-  elements.challengeTimeRemaining.textContent = timeCompleted
-    ? "已完成"
-    : `还需阅读 ${formatChallengeRemainingDuration(totalSeconds, targetSeconds)}`;
-}
-
-function slimChallengeRow(row) {
-  return {
-    start_date: row.start_date,
-    end_date: row.end_date,
-    target_days: row.target_days,
-    target_seconds: row.target_seconds,
-    daily_read_seconds: row.daily_read_seconds,
-    synced_at: row.synced_at,
-  };
-}
-
-async function loadChallenge() {
-  const { data, error } = await restSelect("weread_challenge", {
-    select: "start_date,end_date,target_days,target_seconds,daily_read_seconds,synced_at",
-    filter: { id: "eq.weread-30d-202606" },
-  });
-
-  if (error) {
-    console.error(error);
-    elements.challengeSection.hidden = true;
-    return;
-  }
-
-  challengeRow = data?.[0] ? slimChallengeRow(data[0]) : null;
-  renderChallenge();
-  writeCache();
-}
-
 function slimStatsRow(row) {
   const payload = row.payload || {};
   return {
@@ -861,7 +703,6 @@ function writeCache() {
       JSON.stringify({
         savedAt: Date.now(),
         stats: readingStatsByMode,
-        challenge: challengeRow,
         hourly: hourlyReadingRows,
         books: wereadBooks,
       }),
@@ -878,12 +719,6 @@ function hydrateFromCache(cache) {
   if (cache.stats && Object.keys(cache.stats).length > 0) {
     readingStatsByMode = cache.stats;
     renderReadingStats();
-    hydrated = true;
-  }
-
-  if (cache.challenge) {
-    challengeRow = cache.challenge;
-    renderChallenge();
     hydrated = true;
   }
 
@@ -1956,7 +1791,7 @@ if (cached) {
   hydrateFromCache(cached);
 }
 
-Promise.all([loadReadingStats(), loadChallenge(), loadHourlyReading(), loadWereadBooks()])
+Promise.all([loadReadingStats(), loadHourlyReading(), loadWereadBooks()])
   .then(() => scheduleBookReviewsLoad())
   .catch((error) => {
     console.error(error);
