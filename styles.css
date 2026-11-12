@@ -787,6 +787,23 @@ h3 {
   transform: translateY(-1px);
 }
 
+.weread-cover-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 96px;
+}
+
+.weread-cover-progress {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .weread-cover {
   display: grid;
   width: 84px;
@@ -904,32 +921,6 @@ h3 {
   font-size: 0.78rem;
   font-weight: 600;
   line-height: 1.45;
-}
-
-.reading-progress {
-  display: grid;
-  gap: 6px;
-}
-
-.reading-progress-bar {
-  overflow: hidden;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--progress-track);
-}
-
-.reading-progress-bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
-}
-
-.reading-progress-text {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 600;
 }
 
 .highlight-list {

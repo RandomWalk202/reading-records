@@ -1260,21 +1260,13 @@ function renderFinishedMeta(book) {
   return `<p class="weread-finished-meta">${escapeHtml(parts.join(" · "))}</p>`;
 }
 
-function renderReadingProgress(book) {
-  if (book.progress === null || book.progress === undefined) {
-    return `<p class="reading-progress-text">阅读进度未知</p>`;
+function renderCoverProgress(book) {
+  if (book.progress === null || book.progress === undefined || Number.isNaN(Number(book.progress))) {
+    return `<p class="weread-cover-progress">进度未知</p>`;
   }
 
-  const value = Math.min(100, Math.max(0, Number(book.progress)));
-
-  return `
-    <div class="reading-progress">
-      <div class="reading-progress-bar" aria-hidden="true">
-        <span style="width: ${value}%"></span>
-      </div>
-      <p class="reading-progress-text">已读 ${value}%</p>
-    </div>
-  `;
+  const value = Math.min(100, Math.max(0, Math.round(Number(book.progress))));
+  return `<p class="weread-cover-progress">${value}%</p>`;
 }
 
 function loadLocalBookReviews() {
@@ -1542,7 +1534,7 @@ function renderWereadBookCard(
   const cover = `<span class="weread-book">${coverFace}</span>`;
   const author = book.author || "未填写作者";
   const openUrl = `${WEREAD_OPEN_URL}${encodeURIComponent(book.weread_book_id)}`;
-  const progressBlock = showProgress ? renderReadingProgress(book) : "";
+  const coverProgress = showProgress ? renderCoverProgress(book) : "";
   const finishedMetaBlock = showFinishedMeta ? renderFinishedMeta(book) : "";
   const highlightsBlock = showHighlights
     ? renderWereadHighlights(book.highlights, book.weread_book_id)
@@ -1551,22 +1543,24 @@ function renderWereadBookCard(
 
   return `
     <article class="weread-card">
-      <button
-        type="button"
-        class="weread-cover"
-        data-action="review"
-        data-book-id="${escapeHtml(book.weread_book_id)}"
-        aria-label="${escapeHtml(reviewLabel)}：${escapeHtml(book.title)}"
-      >
-        ${cover}
-      </button>
+      <div class="weread-cover-col">
+        <button
+          type="button"
+          class="weread-cover"
+          data-action="review"
+          data-book-id="${escapeHtml(book.weread_book_id)}"
+          aria-label="${escapeHtml(reviewLabel)}：${escapeHtml(book.title)}"
+        >
+          ${cover}
+        </button>
+        ${coverProgress}
+      </div>
       <div class="weread-content">
         <div class="weread-meta">
           <h3 class="weread-title">${escapeHtml(book.title)}</h3>
           <p class="weread-author">${escapeHtml(author)}</p>
         </div>
         ${finishedMetaBlock}
-        ${progressBlock}
         ${highlightsBlock}
         <a class="weread-link" href="${openUrl}">在微信读书打开</a>
       </div>
