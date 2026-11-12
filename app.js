@@ -1,3 +1,5 @@
+import { resolveBookAuthor } from "./scripts/book-authors.mjs";
+
 const SUPABASE_URL = "https://jsbppxnrnzsxoqfworjj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zLmaAY6WoAl8-fKy0WYMYw_RkvoueHC";
 
@@ -728,7 +730,7 @@ function hydrateFromCache(cache) {
   }
 
   if (cache.books?.length) {
-    wereadBooks = cache.books;
+    wereadBooks = withResolvedAuthors(cache.books);
     renderWereadBooks();
     hydrated = true;
   }
@@ -1007,7 +1009,7 @@ async function loadWereadHighlightDetails(bookRows) {
     return;
   }
 
-  wereadBooks = attachHighlightsToBooks(bookRows, highlightRows);
+  wereadBooks = withResolvedAuthors(attachHighlightsToBooks(bookRows, highlightRows));
   renderWereadBooks();
   writeCache();
 }
@@ -1041,7 +1043,7 @@ async function loadWereadBooks() {
   );
   const previousById = new Map(wereadBooks.map((book) => [book.weread_book_id, book]));
 
-  wereadBooks = attachHighlightFlags(bookRows, bookIdsWithHighlights, previousById);
+  wereadBooks = withResolvedAuthors(attachHighlightFlags(bookRows, bookIdsWithHighlights, previousById));
   renderWereadBooks();
   writeCache();
 
@@ -1223,58 +1225,66 @@ function closeHighlightsDialog() {
   }
 }
 
-function formatShelfDate(isoTime) {
-  if (!isoTime) {
-    return null;
-  }
-
-  const date = new Date(isoTime);
-  if (Number.isNaN(date.getTime())) {
-    return null;
+function formatCoverDate(isoTime) {
+  const date = new Date(isoTime || "");
+  if (!Number.isFinite(date.getTime())) {
+    return "";
   }
 
   return date.toLocaleDateString("zh-CN", {
-    year: "numeric",
     month: "long",
     day: "numeric",
   });
 }
 
-function renderFinishedMeta(book) {
-  const parts = [];
-  const finishDate = formatShelfDate(book.finish_time);
-  const readDuration = formatDurationSeconds(book.read_time_seconds);
-
-  if (finishDate) {
-    parts.push(`读完于 ${finishDate}`);
-  }
-
-  if (book.read_time_seconds > 0) {
-    parts.push(`阅读 ${readDuration}`);
-  }
-
-  if (!parts.length) {
+function formatCoverDuration(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds || 0));
+  if (!seconds) {
     return "";
   }
 
-  return `<p class="weread-finished-meta">${escapeHtml(parts.join(" · "))}</p>`;
-}
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
 
-function renderReadingProgress(book) {
-  if (book.progress === null || book.progress === undefined) {
-    return `<p class="reading-progress-text">阅读进度未知</p>`;
+  if (hours > 0 && minutes > 0) {
+    return `${hours}小时${minutes}分`;
   }
 
-  const value = Math.min(100, Math.max(0, Number(book.progress)));
+  if (hours > 0) {
+    return `${hours}小时`;
+  }
 
-  return `
-    <div class="reading-progress">
-      <div class="reading-progress-bar" aria-hidden="true">
-        <span style="width: ${value}%"></span>
-      </div>
-      <p class="reading-progress-text">已读 ${value}%</p>
-    </div>
-  `;
+  if (minutes > 0) {
+    return `${minutes}分钟`;
+  }
+
+  return "不足1分钟";
+}
+
+function renderCoverFinished(book) {
+  const dateLabel = formatCoverDate(book.finish_time) || "已读完";
+  const durationLabel = formatCoverDuration(book.read_time_seconds);
+  const duration = durationLabel
+    ? `<p class="weread-cover-note">${escapeHtml(durationLabel)}</p>`
+    : "";
+
+  return `<p class="weread-cover-progress">${escapeHtml(dateLabel)}</p>${duration}`;
+}
+
+function withResolvedAuthors(books) {
+  return books.map((book) => ({
+    ...book,
+    author: resolveBookAuthor(book),
+  }));
+}
+
+function renderCoverProgress(book) {
+  if (book.progress === null || book.progress === undefined || Number.isNaN(Number(book.progress))) {
+    return `<p class="weread-cover-progress">进度未知</p>`;
+  }
+
+  const value = Math.min(100, Math.max(0, Math.round(Number(book.progress))));
+  return `<p class="weread-cover-progress">${value}%</p>`;
 }
 
 function loadLocalBookReviews() {
@@ -1536,13 +1546,17 @@ function renderWereadBookCard(
   book,
   { showProgress = false, showHighlights = true, showFinishedMeta = false } = {},
 ) {
-  const cover = book.cover_url
-    ? `<img src="${escapeHtml(book.cover_url)}" alt="" width="72" height="102" loading="lazy" decoding="async" fetchpriority="low" />`
+  const coverFace = book.cover_url
+    ? `<img src="${escapeHtml(book.cover_url)}" alt="" width="64" height="92" loading="lazy" decoding="async" fetchpriority="low" />`
     : `<span class="cover-fallback">${escapeHtml(book.title.slice(0, 4))}</span>`;
+  const cover = `<span class="weread-book">${coverFace}</span>`;
   const author = book.author || "未填写作者";
   const openUrl = `${WEREAD_OPEN_URL}${encodeURIComponent(book.weread_book_id)}`;
-  const progressBlock = showProgress ? renderReadingProgress(book) : "";
-  const finishedMetaBlock = showFinishedMeta ? renderFinishedMeta(book) : "";
+  const coverCaption = showProgress
+    ? renderCoverProgress(book)
+    : showFinishedMeta
+      ? renderCoverFinished(book)
+      : "";
   const highlightsBlock = showHighlights
     ? renderWereadHighlights(book.highlights, book.weread_book_id)
     : "";
@@ -1550,22 +1564,23 @@ function renderWereadBookCard(
 
   return `
     <article class="weread-card">
-      <button
-        type="button"
-        class="weread-cover"
-        data-action="review"
-        data-book-id="${escapeHtml(book.weread_book_id)}"
-        aria-label="${escapeHtml(reviewLabel)}：${escapeHtml(book.title)}"
-      >
-        ${cover}
-      </button>
+      <div class="weread-cover-col">
+        <button
+          type="button"
+          class="weread-cover"
+          data-action="review"
+          data-book-id="${escapeHtml(book.weread_book_id)}"
+          aria-label="${escapeHtml(reviewLabel)}：${escapeHtml(book.title)}"
+        >
+          ${cover}
+        </button>
+        ${coverCaption}
+      </div>
       <div class="weread-content">
         <div class="weread-meta">
           <h3 class="weread-title">${escapeHtml(book.title)}</h3>
           <p class="weread-author">${escapeHtml(author)}</p>
         </div>
-        ${finishedMetaBlock}
-        ${progressBlock}
         ${highlightsBlock}
         <a class="weread-link" href="${openUrl}">在微信读书打开</a>
       </div>

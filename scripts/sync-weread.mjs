@@ -11,6 +11,8 @@
  *   WEREAD_HIGHLIGHTS_PER_BOOK=20  (0 = sync all highlights per book)
  */
 
+import { resolveBookAuthor } from "./book-authors.mjs";
+
 const WEREAD_GATEWAY = "https://i.weread.qq.com/api/agent/gateway";
 const SKILL_VERSION = "1.0.3";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://jsbppxnrnzsxoqfworjj.supabase.co";
@@ -279,7 +281,11 @@ async function main() {
         {
           weread_book_id: book.bookId,
           title: book.title?.trim() || "未命名书籍",
-          author: book.author?.trim() || "",
+          author: resolveBookAuthor({
+            bookId: book.bookId,
+            title: book.title,
+            author: book.author,
+          }),
           cover_url: book.cover || null,
           finish_reading: finishReading,
           progress,
