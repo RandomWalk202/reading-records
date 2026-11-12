@@ -1532,6 +1532,64 @@ async function deleteActiveBookReview() {
   elements.reviewDialogText.focus();
 }
 
+function readingProgressValue(book) {
+  if (book.progress === null || book.progress === undefined || Number.isNaN(Number(book.progress))) {
+    return null;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(Number(book.progress))));
+}
+
+function renderReadingStand(books) {
+  const ordered = [...books].sort((left, right) => {
+    const leftTime = Date.parse(left.read_update_time || "");
+    const rightTime = Date.parse(right.read_update_time || "");
+    const leftValid = Number.isFinite(leftTime);
+    const rightValid = Number.isFinite(rightTime);
+
+    if (leftValid && rightValid) {
+      return rightTime - leftTime;
+    }
+
+    if (leftValid) {
+      return -1;
+    }
+
+    if (rightValid) {
+      return 1;
+    }
+
+    return 0;
+  });
+
+  return `
+    <div class="reading-stand" aria-label="在读封面">
+      ${ordered
+        .map((book) => {
+          const progress = readingProgressValue(book);
+          const progressLabel = progress === null ? "进度未知" : `${progress}%`;
+          const cover = book.cover_url
+            ? `<img src="${escapeHtml(book.cover_url)}" alt="" loading="lazy" decoding="async" />`
+            : `<span class="reading-stand-fallback">${escapeHtml(book.title.slice(0, 4))}</span>`;
+
+          return `
+            <button
+              type="button"
+              class="reading-stand-item"
+              data-action="review"
+              data-book-id="${escapeHtml(book.weread_book_id)}"
+              aria-label="${escapeHtml(book.title)}，${progressLabel}"
+            >
+              <span class="reading-stand-book">${cover}</span>
+              <span class="reading-stand-progress">${progressLabel}</span>
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function renderWereadBookCard(
   book,
   { showProgress = false, showHighlights = true, showFinishedMeta = false } = {},
@@ -1666,11 +1724,15 @@ function renderWereadBooks() {
 
   const cardOptions = SHELF_CARD_OPTIONS[activeShelfTab] || {};
 
+  const stand =
+    activeShelfTab === "reading" && activeBooks.length > 0 ? renderReadingStand(activeBooks) : "";
+
   elements.wereadBookGrid.innerHTML =
     activeBooks.length === 0
       ? ""
       : `
         <div class="weread-shelf">
+          ${stand}
           <div class="weread-list">
             ${activeBooks.map((book) => renderWereadBookCard(book, cardOptions)).join("")}
           </div>
