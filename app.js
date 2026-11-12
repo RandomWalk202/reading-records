@@ -1,3 +1,5 @@
+import { resolveBookAuthor } from "./scripts/book-authors.mjs";
+
 const SUPABASE_URL = "https://jsbppxnrnzsxoqfworjj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zLmaAY6WoAl8-fKy0WYMYw_RkvoueHC";
 
@@ -728,7 +730,7 @@ function hydrateFromCache(cache) {
   }
 
   if (cache.books?.length) {
-    wereadBooks = cache.books;
+    wereadBooks = withResolvedAuthors(cache.books);
     renderWereadBooks();
     hydrated = true;
   }
@@ -1007,7 +1009,7 @@ async function loadWereadHighlightDetails(bookRows) {
     return;
   }
 
-  wereadBooks = attachHighlightsToBooks(bookRows, highlightRows);
+  wereadBooks = withResolvedAuthors(attachHighlightsToBooks(bookRows, highlightRows));
   renderWereadBooks();
   writeCache();
 }
@@ -1041,7 +1043,7 @@ async function loadWereadBooks() {
   );
   const previousById = new Map(wereadBooks.map((book) => [book.weread_book_id, book]));
 
-  wereadBooks = attachHighlightFlags(bookRows, bookIdsWithHighlights, previousById);
+  wereadBooks = withResolvedAuthors(attachHighlightFlags(bookRows, bookIdsWithHighlights, previousById));
   renderWereadBooks();
   writeCache();
 
@@ -1258,6 +1260,13 @@ function renderFinishedMeta(book) {
   }
 
   return `<p class="weread-finished-meta">${escapeHtml(parts.join(" · "))}</p>`;
+}
+
+function withResolvedAuthors(books) {
+  return books.map((book) => ({
+    ...book,
+    author: resolveBookAuthor(book),
+  }));
 }
 
 function renderCoverProgress(book) {
