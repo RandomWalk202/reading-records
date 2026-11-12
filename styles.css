@@ -797,10 +797,20 @@ h3 {
 .weread-cover-progress {
   margin: 10px 0 0;
   color: var(--muted);
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.weread-cover-note {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
   text-align: center;
 }
 
@@ -913,14 +923,6 @@ h3 {
   margin: 0;
   color: var(--muted);
   font-size: 0.82rem;
-}
-
-.weread-finished-meta {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.45;
 }
 
 .highlight-list {

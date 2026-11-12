@@ -1225,41 +1225,50 @@ function closeHighlightsDialog() {
   }
 }
 
-function formatShelfDate(isoTime) {
-  if (!isoTime) {
-    return null;
-  }
-
-  const date = new Date(isoTime);
-  if (Number.isNaN(date.getTime())) {
-    return null;
+function formatCoverDate(isoTime) {
+  const date = new Date(isoTime || "");
+  if (!Number.isFinite(date.getTime())) {
+    return "";
   }
 
   return date.toLocaleDateString("zh-CN", {
-    year: "numeric",
     month: "long",
     day: "numeric",
   });
 }
 
-function renderFinishedMeta(book) {
-  const parts = [];
-  const finishDate = formatShelfDate(book.finish_time);
-  const readDuration = formatDurationSeconds(book.read_time_seconds);
-
-  if (finishDate) {
-    parts.push(`读完于 ${finishDate}`);
-  }
-
-  if (book.read_time_seconds > 0) {
-    parts.push(`阅读 ${readDuration}`);
-  }
-
-  if (!parts.length) {
+function formatCoverDuration(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds || 0));
+  if (!seconds) {
     return "";
   }
 
-  return `<p class="weread-finished-meta">${escapeHtml(parts.join(" · "))}</p>`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours}小时${minutes}分`;
+  }
+
+  if (hours > 0) {
+    return `${hours}小时`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}分钟`;
+  }
+
+  return "不足1分钟";
+}
+
+function renderCoverFinished(book) {
+  const dateLabel = formatCoverDate(book.finish_time) || "已读完";
+  const durationLabel = formatCoverDuration(book.read_time_seconds);
+  const duration = durationLabel
+    ? `<p class="weread-cover-note">${escapeHtml(durationLabel)}</p>`
+    : "";
+
+  return `<p class="weread-cover-progress">${escapeHtml(dateLabel)}</p>${duration}`;
 }
 
 function withResolvedAuthors(books) {
@@ -1543,8 +1552,11 @@ function renderWereadBookCard(
   const cover = `<span class="weread-book">${coverFace}</span>`;
   const author = book.author || "未填写作者";
   const openUrl = `${WEREAD_OPEN_URL}${encodeURIComponent(book.weread_book_id)}`;
-  const coverProgress = showProgress ? renderCoverProgress(book) : "";
-  const finishedMetaBlock = showFinishedMeta ? renderFinishedMeta(book) : "";
+  const coverCaption = showProgress
+    ? renderCoverProgress(book)
+    : showFinishedMeta
+      ? renderCoverFinished(book)
+      : "";
   const highlightsBlock = showHighlights
     ? renderWereadHighlights(book.highlights, book.weread_book_id)
     : "";
@@ -1562,14 +1574,13 @@ function renderWereadBookCard(
         >
           ${cover}
         </button>
-        ${coverProgress}
+        ${coverCaption}
       </div>
       <div class="weread-content">
         <div class="weread-meta">
           <h3 class="weread-title">${escapeHtml(book.title)}</h3>
           <p class="weread-author">${escapeHtml(author)}</p>
         </div>
-        ${finishedMetaBlock}
         ${highlightsBlock}
         <a class="weread-link" href="${openUrl}">在微信读书打开</a>
       </div>
